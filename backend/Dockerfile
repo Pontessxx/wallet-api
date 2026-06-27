@@ -7,6 +7,7 @@ WORKDIR /src
 COPY AuthApi/AuthApi.csproj               AuthApi/
 COPY Domain/Domain.csproj                 Domain/
 COPY Infrastructure/Infrastructure.csproj Infrastructure/
+COPY Application/Application.csproj       Application/
 COPY AuthApi.slnx .
 
 RUN dotnet restore AuthApi.slnx

@@ -45,3 +45,6 @@ TestResults/
 coverage/
 *.trx
 *.coveragexml
+
+
+backend/AuthApi/appsettings.Development.json
