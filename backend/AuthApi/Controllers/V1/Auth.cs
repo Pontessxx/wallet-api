@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace AuthApi.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("auth/v1")]
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
@@ -45,8 +45,10 @@ public class AuthController : ControllerBase
             var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
             var role = jwt.Claims
                 .FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "User";
+            
+            var username = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? request.Username;
 
-            return Ok(new LoginResponse(Token: token, Role: role));
+            return Ok(new LoginResponse(Token: token, Role: role, Username: username));
         }
         catch (UnauthorizedAccessException)
         {

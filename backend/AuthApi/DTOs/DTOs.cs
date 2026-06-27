@@ -6,4 +6,6 @@ public record LoginRequest(
 
 public record LoginResponse(
     string Token,
-    string Role);
+    string Role,
+    string Username
+    );
