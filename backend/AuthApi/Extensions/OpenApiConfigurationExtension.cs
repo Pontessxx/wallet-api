@@ -17,6 +17,7 @@ public static class OpenApiConfigurationExtension
                 Version = version,
                 Description = "API da minha aplicação"
             });
+            c.UseInlineDefinitionsForEnums();
 
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
