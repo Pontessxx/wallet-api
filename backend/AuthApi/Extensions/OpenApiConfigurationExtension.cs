@@ -33,13 +33,14 @@ public static class OpenApiConfigurationExtension
                 Description = "Insira o token JWT"
             });
 
-            c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
-            {
-                {
-                    new OpenApiSecuritySchemeReference("Bearer", document),
-                    new List<string>()
-                }
-            });
+            // c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+            // {
+            //     {
+            //         new OpenApiSecuritySchemeReference("Bearer", document),
+            //         new List<string>()
+            //     }
+            // });
+            c.OperationFilter<AuthorizeOperationFilter>();
         });
 
         return services;
