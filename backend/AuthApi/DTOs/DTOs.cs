@@ -9,3 +9,13 @@ public record LoginResponse(
     string Role,
     string Username
     );
+
+public record CreateUserRequest(
+    string Username,
+    string Password
+    );
+
+public record UserResponse(
+    Guid Id,
+    string Username,
+    string Role);
