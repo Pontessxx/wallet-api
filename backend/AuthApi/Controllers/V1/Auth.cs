@@ -3,6 +3,7 @@ using Application.Services;
 using AuthApi.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Auth.Domain;
 
 namespace AuthApi.Controllers;
@@ -62,5 +63,26 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new { message = "Credenciais inválidas." });
         }
+    }
+
+
+    /// <summary>
+    /// Atualiza a senha do usuário autenticado.
+    /// </summary>
+    /// <param name="request">Senha atual e nova senha</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Sem conteúdo</returns>
+    /// <response code="204">Senha atualizada com sucesso</response>
+    /// <response code="400">Dados inválidos</response>
+    /// <response code="401">Não autenticado</response>
+    [HttpPut("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword([FromBody] object request, CancellationToken ct)
+    {
+        // TODO
+        return NoContent();
     }
 }
