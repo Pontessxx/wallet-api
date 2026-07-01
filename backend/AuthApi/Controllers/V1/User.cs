@@ -2,6 +2,7 @@ using Application.Services;
 using AuthApi.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace User.Controllers;
 
@@ -17,19 +18,29 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// Retorna um usuário pelo ID.
+    /// Retorna o usuário autenticado.
     /// </summary>
-    /// <param name="id">ID do usuário</param>
     /// <returns>Usuário encontrado</returns>
     /// <response code="200">Usuário encontrado</response>
     /// <response code="404">Usuário não encontrado</response>
+    [Authorize]
     [HttpGet("me")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetById(Guid id)
+    public async Task<IActionResult> GetMe(CancellationToken ct)
     {
-        // TODO
-        return Ok();
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (!Guid.TryParse(userIdValue, out var userId))
+            return Unauthorized(new { message = "Usuário autenticado inválido." });
+
+        var user = await _userService.GetByIdAsync(userId, ct);
+
+        if (user is null)
+            return NotFound(new { message = "Usuário não encontrado." });
+
+        return Ok(new UserResponse(user.Id, user.Username, user.Role.ToString()));
     }
 
     /// <summary>
@@ -62,6 +73,7 @@ public class UserController : ControllerBase
     /// Remove um usuário pelo ID (soft delete).
     /// </summary>
     /// <param name="id">ID do usuário</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Sem conteúdo</returns>
     /// <response code="204">Removido com sucesso</response>
     /// <response code="404">Usuário não encontrado</response>
@@ -69,9 +81,16 @@ public class UserController : ControllerBase
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        // TODO
-        return NoContent();
+        try
+        {
+            await _userService.DeleteAsync(id, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }

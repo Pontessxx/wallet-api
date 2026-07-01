@@ -33,4 +33,18 @@ public class UserService
 
         return user;
     }
+
+    public Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => _repository.GetByIdAsync(id, ct);
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var user = await _repository.GetByIdAsync(id, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        user.DeletedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _repository.SaveChangesAsync(ct);
+    }
 }
