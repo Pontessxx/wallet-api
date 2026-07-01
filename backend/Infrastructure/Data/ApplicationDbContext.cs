@@ -22,6 +22,9 @@ namespace Infrastructure.Data
                 entity.Property(e => e.Username).HasColumnName("username").IsRequired();
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.Property(e => e.PasswordHash).HasColumnName("password_hash").IsRequired();
+                entity.Property(e => e.ResetCodeHash).HasColumnName("reset_code_hash");
+                entity.Property(e => e.ResetCodeExpiresAt).HasColumnName("reset_code_expires_at");
+                entity.Property(e => e.ResetCodeFailedAttempts).HasColumnName("reset_code_failed_attempts");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
                 entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");

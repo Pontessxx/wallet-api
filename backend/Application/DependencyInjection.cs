@@ -1,3 +1,4 @@
+using Application.Interfaces;
 using Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,6 +8,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddScoped<IResetCodeValidator, ResetCodeValidator>();
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
 

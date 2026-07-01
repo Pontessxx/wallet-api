@@ -12,6 +12,7 @@ namespace AuthApi.Controllers;
 [Route("auth/v1")]
 public class AuthController : ControllerBase
 {
+    private const int ResetCodeLength = 6;
     private readonly AuthService _authService;
 
     public AuthController(AuthService authService)
@@ -54,10 +55,15 @@ public class AuthController : ControllerBase
             var token = await _authService.LoginAsync(request.Username, request.Password, ct);
 
             var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+            var userIdValue = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value;
             var role = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "User";
-            var username = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? request.Username;
+            var username = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value
+                ?? jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
+                ?? request.Username;
 
-            return Ok(new LoginResponse(Token: token, Role: role, Username: username));
+            _ = Guid.TryParse(userIdValue, out var userId);
+
+            return Ok(new LoginResponse(Id: userId, Token: token, Role: role, Username: username));
         }
         catch (UnauthorizedAccessException)
         {
@@ -65,24 +71,53 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gera um código numérico temporário para redefinição de senha.
+    /// </summary>
+    /// <param name="request">Nome do usuário que vai receber o código</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Código de redefinição e prazo de expiração</returns>
+    /// <response code="200">Código gerado com sucesso</response>
+    [HttpPost("reset-code")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PasswordResetCodeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GenerateResetCode([FromBody] ResetCodeRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(new { message = "Username é obrigatório." });
+
+        var result = await _authService.GeneratePasswordResetCodeAsync(request.Username, ct);
+
+        return Ok(new PasswordResetCodeResponse(result.Code, result.ExpiresAt));
+    }
+
 
     /// <summary>
-    /// Atualiza a senha do usuário autenticado.
+    /// Atualiza a senha do usuário informado no body usando username, código de reset e nova senha.
     /// </summary>
-    /// <param name="request">Senha atual e nova senha</param>
+    /// <param name="request">Nome do usuário, código de redefinição e nova senha</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Sem conteúdo</returns>
-    /// <response code="204">Senha atualizada com sucesso</response>
+    /// <returns>Mensagem de sucesso</returns>
+    /// <response code="200">Senha atualizada com sucesso</response>
     /// <response code="400">Dados inválidos</response>
     /// <response code="401">Não autenticado</response>
     [HttpPut("change-password")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ChangePasswordResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ChangePassword([FromBody] object request, CancellationToken ct)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
-        // TODO
-        return NoContent();
+        try
+        {
+            await _authService.ChangePasswordAsync(request.Username, request.ResetCode, request.NewPassword, ct);
+
+            return Ok(new ChangePasswordResponse("Senha atualizada com sucesso."));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "Código de redefinição inválido ou expirado." });
+        }
     }
 }
