@@ -1,5 +1,3 @@
-using Application.Interfaces;
-
 namespace Infrastructure.Security;
 
 public class BcryptPasswordHasher : IPasswordHasher

@@ -1,8 +1,3 @@
-using Application.Interfaces;
-using Auth.Domain;
-using Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-
 namespace Infrastructure.Repositories;
 
 public class UserRepository : IUserRepository

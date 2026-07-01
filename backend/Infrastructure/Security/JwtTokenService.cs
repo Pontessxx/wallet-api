@@ -1,11 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Application.Interfaces;
-using Auth.Domain;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-
 namespace Infrastructure.Security;
 
 public class JwtTokenService : ITokenService

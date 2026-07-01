@@ -1,11 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using Application.Services;
-using AuthApi.DTOs;
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
-using Auth.Domain;
-
 namespace AuthApi.Controllers;
 
 [ApiController]

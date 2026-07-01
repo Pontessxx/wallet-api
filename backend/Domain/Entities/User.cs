@@ -1,5 +1,3 @@
-using System;
-
 namespace Auth.Domain
 {
     public class User

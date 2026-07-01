@@ -1,9 +1,3 @@
-using Application;
-using Infrastructure;
-using Infrastructure.Data;
-using AuthApi.Extensions;
-using Microsoft.EntityFrameworkCore;
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()

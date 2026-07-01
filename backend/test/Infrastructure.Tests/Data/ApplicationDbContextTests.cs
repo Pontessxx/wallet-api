@@ -1,10 +1,3 @@
-using System;
-using System.Threading.Tasks;
-using FluentAssertions;
-using Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
-
 namespace Infrastructure.Tests.Data
 {
     public class ApplicationDbContextTests

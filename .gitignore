@@ -50,3 +50,4 @@ coverage/
 .github/agents/AGENTS.md
 backend/AuthApi/appsettings.Development.json
 AGENTS.md
+.github/workflows/cd-docker.yaml

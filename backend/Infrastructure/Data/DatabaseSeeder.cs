@@ -1,9 +1,3 @@
-using Auth.Domain;
-using Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure;
 
 public class DatabaseSeeder

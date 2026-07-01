@@ -1,7 +1,3 @@
-using Application.Interfaces;
-using Auth.Domain;
-using System.Security.Cryptography;
-
 namespace Application.Services;
 
 public class AuthService

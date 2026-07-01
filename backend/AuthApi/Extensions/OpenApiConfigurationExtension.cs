@@ -1,5 +1,3 @@
-using Microsoft.OpenApi;
-using System.Reflection;
 namespace AuthApi.Extensions;
 
 public static class OpenApiConfigurationExtension

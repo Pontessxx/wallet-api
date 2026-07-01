@@ -1,6 +1,3 @@
-using Application.Interfaces;
-using Auth.Domain;
-
 namespace Application.Services;
 
 public class UserService

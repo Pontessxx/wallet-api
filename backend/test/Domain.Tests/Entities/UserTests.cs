@@ -1,8 +1,3 @@
-using System;
-using Auth.Domain;
-using FluentAssertions;
-using Xunit;
-
 namespace Domain.Tests.Entities
 {
     public class UserTests
@@ -11,23 +6,28 @@ namespace Domain.Tests.Entities
         public void User_Should_Initialize_With_Default_Role_User()
         {
             // Arrange & Act
-            var user = new User { Id = Guid.NewGuid(), Email = "test@example.com", PasswordHash = "hash123" };
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Username = "testuser",
+                PasswordHash = "hash123"
+            };
 
             // Assert
             user.Role.Should().Be(RoleUser.User);
         }
 
         [Fact]
-        public void User_Should_Set_Email_Correctly()
+        public void User_Should_Set_Username_Correctly()
         {
             // Arrange
-            var email = "john@example.com";
+            var username = "john";
 
             // Act
-            var user = new User { Email = email };
+            var user = new User { Username = username };
 
             // Assert
-            user.Email.Should().Be(email);
+            user.Username.Should().Be(username);
         }
     }
 }

@@ -1,0 +1,9 @@
+global using System;
+global using System.Linq;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using System.Security.Cryptography;
+global using Application.Interfaces;
+global using Application.Services;
+global using Auth.Domain;
+global using Microsoft.Extensions.DependencyInjection;

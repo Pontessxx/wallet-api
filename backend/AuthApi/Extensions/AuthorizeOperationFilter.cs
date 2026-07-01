@@ -1,7 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.OpenApi;
-using Swashbuckle.AspNetCore.SwaggerGen;
-
 namespace AuthApi.Extensions;
 
 public sealed class AuthorizeOperationFilter : IOperationFilter

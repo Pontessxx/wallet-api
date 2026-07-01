@@ -1,7 +1,3 @@
-using System;
-using Microsoft.EntityFrameworkCore;
-using Auth.Domain;
-
 namespace Infrastructure.Data
 {
     public class ApplicationDbContext : DbContext

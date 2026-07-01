@@ -1,5 +1,3 @@
-using Auth.Domain;
-
 namespace Application.Interfaces;
 
 public interface IUserRepository
