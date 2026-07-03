@@ -6,6 +6,7 @@ builder.Services.AddControllers()
         opt.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 builder.Services.AddOpenApiConfig();
+builder.Services.AddFrontendCorsConfig(builder.Configuration);
 
 builder.Services
     .AddApplication()
@@ -24,6 +25,7 @@ using (var scope = app.Services.CreateScope())
 app.UseSwaggerUiConfig();
 
 app.UseHttpsRedirection();
+app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -44,6 +44,35 @@ public static class OpenApiConfigurationExtension
         return services;
     }
 
+    public static IServiceCollection AddFrontendCorsConfig(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var allowedOrigins = configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>()
+            ?? [];
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy("Frontend", policy =>
+            {
+                if (allowedOrigins.Length > 0)
+                {
+                    policy.WithOrigins(allowedOrigins);
+                }
+                else
+                {
+                    policy.AllowAnyOrigin();
+                }
+
+                policy.AllowAnyHeader().AllowAnyMethod();
+            });
+        });
+
+        return services;
+    }
+
     public static IApplicationBuilder UseSwaggerUiConfig(
         this IApplicationBuilder app)
     {
