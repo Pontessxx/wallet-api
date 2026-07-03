@@ -19,6 +19,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
           cache: true
+          cache-dependency-path: backend/**/packages.lock.json
 
       - name: Restore
         run: dotnet restore backend/AuthApi.slnx
