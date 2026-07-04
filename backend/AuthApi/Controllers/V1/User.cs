@@ -47,6 +47,7 @@ public class UserController : ControllerBase
     /// <response code="400">Dados inválidos</response>
     /// <response code="409">Usuário já existe</response>
     [HttpPost("create")]
+    [Obsolete("Use /user/v2/create")]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

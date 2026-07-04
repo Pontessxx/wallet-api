@@ -78,7 +78,9 @@ public static class OpenApiConfigurationExtension
             {
                 if (allowedOrigins.Length > 0)
                 {
-                    policy.WithOrigins(allowedOrigins);
+                    policy
+                    .WithOrigins(allowedOrigins)
+                    .AllowCredentials();
                 }
                 else
                 {

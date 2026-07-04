@@ -38,6 +38,7 @@ services:
       Jwt__Audience:  ${JWT_AUDIENCE}
       Seed__AdminUsername: ${ADMINUSERNAME}
       Seed__AdminPassword: ${ADMINPASSWORD}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN}
     ports:
       - "8080:8080"
 

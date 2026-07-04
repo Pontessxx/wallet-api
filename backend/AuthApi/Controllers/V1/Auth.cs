@@ -32,6 +32,7 @@ public class AuthController : ControllerBase
     /// <response code="400">Header X-TicketValidation ausente ou inválido</response>
     /// <response code="401">Credenciais inválidas</response>
     [HttpPost("login")]
+    [Obsolete("Use /auth/v2/login. Retorna access token em JSON e refresh token via cookie HttpOnly.")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
