@@ -2,6 +2,7 @@ namespace User.Controllers;
 
 [ApiController]
 [Route("user/v1")]
+[ApiExplorerSettings(GroupName = "v1")]
 public class UserController : ControllerBase
 {
     private readonly UserService _userService;

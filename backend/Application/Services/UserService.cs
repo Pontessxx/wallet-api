@@ -11,9 +11,9 @@ public class UserService
         _hasher = hasher;
     }
 
-    public async Task<User> CreateAsync(string username, string password)
+    public async Task<User> CreateAsync(string username, string password, CancellationToken ct = default)
     {
-        if (await _repository.ExistsByUsernameAsync(username))
+        if (await _repository.ExistsByUsernameAsync(username, ct))
             throw new InvalidOperationException("Já existe um usuário com esse nome.");
 
         var user = new User
@@ -25,8 +25,8 @@ public class UserService
             Role = RoleUser.User
         };
 
-        await _repository.AddAsync(user);
-        await _repository.SaveChangesAsync();
+        await _repository.AddAsync(user, ct);
+        await _repository.SaveChangesAsync(ct);
 
         return user;
     }

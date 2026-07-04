@@ -11,6 +11,7 @@ namespace Auth.Domain
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? DeletedAt { get; set; }
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
         public RoleUser Role { get; set; } = RoleUser.User;
     }

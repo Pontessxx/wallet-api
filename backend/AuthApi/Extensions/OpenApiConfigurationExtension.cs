@@ -15,7 +15,26 @@ public static class OpenApiConfigurationExtension
                 Version = version,
                 Description = "API da minha aplicação"
             });
+            c.SwaggerDoc("v2", new OpenApiInfo
+            {
+                Title = "Auth API V2",
+                Version = version,
+                Description = "Autenticação com access token, refresh token e cookie HttpOnly"
+            });
             c.UseInlineDefinitionsForEnums();
+
+            c.DocInclusionPredicate((docName, apiDesc) =>
+            {
+                if (!apiDesc.TryGetMethodInfo(out var methodInfo))
+                    return false;
+
+                var groupName = methodInfo.DeclaringType?
+                    .GetCustomAttributes(true)
+                    .OfType<ApiExplorerSettingsAttribute>()
+                    .FirstOrDefault()?.GroupName;
+
+                return groupName == docName;
+            });
 
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -80,6 +99,7 @@ public static class OpenApiConfigurationExtension
         app.UseSwaggerUI(c =>
         {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "Backend API V1");
+            c.SwaggerEndpoint("/swagger/v2/swagger.json", "Backend API V2");
         });
 
         return app;

@@ -9,10 +9,12 @@ public class JwtTokenService : ITokenService
         _config = config;
     }
 
-    public string GenerateToken(User user)
+    public string GenerateToken(User user, TimeSpan? expiresIn = null)
     {
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
+
+        var tokenLifetime = expiresIn ?? TimeSpan.FromHours(2);
 
         var claims = new[]
         {
@@ -25,7 +27,7 @@ public class JwtTokenService : ITokenService
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),
+            expires: DateTime.UtcNow.Add(tokenLifetime),
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
         );
 

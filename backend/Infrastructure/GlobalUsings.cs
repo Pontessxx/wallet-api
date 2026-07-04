@@ -1,4 +1,5 @@
 global using System;
+global using Microsoft.AspNetCore.Authentication.JwtBearer;
 global using System.IdentityModel.Tokens.Jwt;
 global using System.Collections.Generic;
 global using System.Linq;
@@ -17,3 +18,4 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.IdentityModel.Tokens;
+global using Application.Services;

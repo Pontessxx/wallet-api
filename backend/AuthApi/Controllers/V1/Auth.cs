@@ -2,6 +2,7 @@ namespace AuthApi.Controllers;
 
 [ApiController]
 [Route("auth/v1")]
+[ApiExplorerSettings(GroupName = "v1")]
 public class AuthController : ControllerBase
 {
     private const int ResetCodeLength = 6;
