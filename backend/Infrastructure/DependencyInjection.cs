@@ -32,8 +32,10 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<IWalletRepository, WalletRepository>();
-        services.AddScoped<IWalletAccountRepository, WalletAccountRepository>();
+        services.AddScoped<ICarteiraRepository, CarteiraRepository>();
+        services.AddScoped<IContaCarteiraRepository, ContaCarteiraRepository>();
+        services.AddScoped<ITransacaoBolsaRepository, TransacaoBolsaRepository>();
+        services.AddScoped<ITransferenciaCarteiraRepository, TransferenciaCarteiraRepository>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();

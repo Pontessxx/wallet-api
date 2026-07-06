@@ -1,19 +1,19 @@
 namespace Infrastructure.Repositories;
 
-public class WalletAccountRepository : IWalletAccountRepository
+public class ContaCarteiraRepository : IContaCarteiraRepository
 {
     private readonly ApplicationDbContext _context;
 
-    public WalletAccountRepository(ApplicationDbContext context)
+    public ContaCarteiraRepository(ApplicationDbContext context)
     {
         _context = context;
     }
 
-    public Task<WalletAccount?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public Task<ContaCarteira?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => _context.WalletAccounts
             .FirstOrDefaultAsync(w => w.Id == id, ct);
 
-    public Task<List<WalletAccount>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public Task<List<ContaCarteira>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
         => _context.WalletAccounts
             .Where(w => w.UserId == userId)
             .ToListAsync(ct);
@@ -22,8 +22,8 @@ public class WalletAccountRepository : IWalletAccountRepository
         => _context.WalletAccounts
             .AnyAsync(w => w.Id == id, ct);
 
-    public async Task AddAsync(WalletAccount walletAccount, CancellationToken ct = default)
-        => await _context.WalletAccounts.AddAsync(walletAccount, ct);
+    public async Task AddAsync(ContaCarteira contaCarteira, CancellationToken ct = default)
+        => await _context.WalletAccounts.AddAsync(contaCarteira, ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => _context.SaveChangesAsync(ct);
