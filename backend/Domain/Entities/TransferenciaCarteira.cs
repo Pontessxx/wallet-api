@@ -3,8 +3,8 @@ namespace Auth.Domain
     public class TransferenciaCarteira
     {
         public Guid Id { get; set; }
-        public Guid ContaCarteiraOrigemId { get; set; }
-        public Guid ContaCarteiraDestinoId { get; set; }
+        public Guid CarteiraOrigemId { get; set; }
+        public Guid CarteiraDestinoId { get; set; }
         public decimal Valor { get; set; }
         public decimal Encargos { get; set; }
         public decimal ValorTotal { get; set; }
@@ -16,7 +16,7 @@ namespace Auth.Domain
         public DateTime CriadaEm { get; set; }
         public DateTime? AtualizadaEm { get; set; }
 
-        public ContaCarteira ContaCarteiraOrigem { get; set; } = null!;
-        public ContaCarteira ContaCarteiraDestino { get; set; } = null!;
+        public Carteira CarteiraOrigem { get; set; } = null!;
+        public Carteira CarteiraDestino { get; set; } = null!;
     }
 }

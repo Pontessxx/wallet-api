@@ -36,15 +36,22 @@ public record UserResponse(
     string Username,
     string Role);
 
-public record CreateContaCarteiraRequest(
+public record CreateCarteiraRequest(
     string Nome,
-    string Categoria,
-    string Descricao,
+    WalletCategory Categoria,
     decimal SaldoInicial);
+
+public record EditCarteiraRequest(
+    Guid Id,
+    string Nome,
+    WalletCategory Categoria);
+
+public record RemoveCarteiraRequest(Guid Id);
 
 public record CarteiraResponse(
     Guid Id,
-    string Descricao,
+    string Nome,
+    WalletCategory Categoria,
     decimal SaldoInicial,
     decimal Receitas,
     decimal Despesas,
@@ -52,11 +59,6 @@ public record CarteiraResponse(
     decimal Saldo,
     decimal SaldoProjetado);
 
-public record ContaCarteiraResponse(
-    Guid Id,
-    string Nome,
-    string Categoria,
-    CarteiraResponse Carteira);
-
-public record UpdateCarteiraRequest(
-    string Descricao);
+public record WalletSummaryResponse(
+    List<CarteiraResponse> Carteiras,
+    decimal SaldoTotal);

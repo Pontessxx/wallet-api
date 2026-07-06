@@ -43,18 +43,18 @@ services:
       - "8080:8080"
 
   # ─── Frontend Vite ─────────────────────────────────────────
-  # frontend:
-  #   build:
-  #     context: ./wallet-web
-  #     dockerfile: Dockerfile
-  #     args:
-  #       VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
-  #   container_name: auth-frontend
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - backend
-  #   ports:
-  #     - "3000:80"
+  frontend:
+    build:
+      context: ./wallet-web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    container_name: auth-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
 
 volumes:
   postgres_data:

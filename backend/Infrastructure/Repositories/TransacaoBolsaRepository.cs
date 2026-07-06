@@ -13,9 +13,9 @@ public class TransacaoBolsaRepository : ITransacaoBolsaRepository
         => _context.TransacoesBolsa
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
-    public Task<List<TransacaoBolsa>> GetByContaCarteiraIdAsync(Guid contaCarteiraId, CancellationToken ct = default)
+    public Task<List<TransacaoBolsa>> GetByCarteiraIdAsync(Guid carteiraId, CancellationToken ct = default)
         => _context.TransacoesBolsa
-            .Where(t => t.ContaCarteiraId == contaCarteiraId)
+            .Where(t => t.CarteiraId == carteiraId)
             .OrderByDescending(t => t.DataLancamento)
             .ToListAsync(ct);
 

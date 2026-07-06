@@ -3,7 +3,7 @@ namespace Auth.Domain
     public class TransacaoBolsa
     {
         public Guid Id { get; set; }
-        public Guid ContaCarteiraId { get; set; }
+        public Guid CarteiraId { get; set; }
         public string CodigoAtivo { get; set; } = null!;
         public LadoTransacaoBolsa Lado { get; set; }
         public decimal Quantidade { get; set; }
@@ -19,6 +19,6 @@ namespace Auth.Domain
         public DateTime CriadaEm { get; set; }
         public DateTime? AtualizadaEm { get; set; }
 
-        public ContaCarteira ContaCarteira { get; set; } = null!;
+        public Carteira Carteira { get; set; } = null!;
     }
 }

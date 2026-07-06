@@ -13,9 +13,9 @@ public class TransferenciaCarteiraRepository : ITransferenciaCarteiraRepository
         => _context.TransferenciasCarteira
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
-    public Task<List<TransferenciaCarteira>> GetByContaCarteiraIdAsync(Guid contaCarteiraId, CancellationToken ct = default)
+    public Task<List<TransferenciaCarteira>> GetByCarteiraIdAsync(Guid carteiraId, CancellationToken ct = default)
         => _context.TransferenciasCarteira
-            .Where(t => t.ContaCarteiraOrigemId == contaCarteiraId || t.ContaCarteiraDestinoId == contaCarteiraId)
+            .Where(t => t.CarteiraOrigemId == carteiraId || t.CarteiraDestinoId == carteiraId)
             .OrderByDescending(t => t.DataLancamento)
             .ToListAsync(ct);
 
