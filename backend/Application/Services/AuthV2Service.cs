@@ -21,7 +21,12 @@ public class AuthV2Service
         _refreshTokenService = refreshTokenService;
     }
 
-    public async Task<AuthSessionResult> LoginAsync(string username, string password, string? ipAddress, CancellationToken ct = default)
+    public async Task<AuthSessionResult> LoginAsync(
+        string username,
+        string password,
+        TicketValidationType ticketValidation,
+        string? ipAddress,
+        CancellationToken ct = default)
     {
         var user = await _userRepository.GetByUsernameAsync(username, ct)
             ?? throw new UnauthorizedAccessException("Credenciais inválidas.");
@@ -29,13 +34,18 @@ public class AuthV2Service
         if (!_passwordHasher.Verify(password, user.PasswordHash))
             throw new UnauthorizedAccessException("Credenciais inválidas.");
 
-        var accessToken = _tokenService.GenerateToken(user, AccessTokenLifetime);
+        var accessToken = GenerateAccessToken(user, ticketValidation);
         var refreshToken = await _refreshTokenService.IssueRefreshTokenAsync(user.Id, ipAddress, ct);
 
         return BuildSessionResult(user, accessToken, refreshToken);
     }
 
-    public async Task<AuthSessionResult> RegisterAsync(string username, string password, string? ipAddress, CancellationToken ct = default)
+    public async Task<AuthSessionResult> RegisterAsync(
+        string username,
+        string password,
+        string? ipAddress,
+        CancellationToken ct = default,
+        TicketValidationType ticketValidation = TicketValidationType.JwtOnly)
     {
         if (await _userRepository.ExistsByUsernameAsync(username, ct))
             throw new InvalidOperationException("Já existe um usuário com esse nome.");
@@ -52,29 +62,55 @@ public class AuthV2Service
         await _userRepository.AddAsync(user, ct);
         await _userRepository.SaveChangesAsync(ct);
 
-        var accessToken = _tokenService.GenerateToken(user, AccessTokenLifetime);
+        var accessToken = GenerateAccessToken(user, ticketValidation);
         var refreshToken = await _refreshTokenService.IssueRefreshTokenAsync(user.Id, ipAddress, ct);
 
         return BuildSessionResult(user, accessToken, refreshToken);
     }
 
-    public async Task<AuthSessionResult> RefreshAsync(string refreshTokenValue, string? ipAddress, CancellationToken ct = default)
+    public async Task<AuthSessionResult> RefreshAsync(
+        string refreshTokenValue,
+        TicketValidationType ticketValidation,
+        Guid authenticatedUserId,
+        string? ipAddress,
+        CancellationToken ct = default)
     {
         var currentRefreshToken = await _refreshTokenService.ValidateRefreshTokenAsync(refreshTokenValue, ct);
+
+        if (currentRefreshToken.UserId != authenticatedUserId)
+            throw new UnauthorizedAccessException("Refresh token não pertence ao usuário autenticado.");
+
         var user = await _userRepository.GetByIdAsync(currentRefreshToken.UserId, ct)
             ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
 
         var nextRefreshToken = await _refreshTokenService.RotateRefreshTokenAsync(currentRefreshToken, ipAddress, ct);
-        var accessToken = _tokenService.GenerateToken(user, AccessTokenLifetime);
+        var accessToken = GenerateAccessToken(user, ticketValidation);
 
         return BuildSessionResult(user, accessToken, nextRefreshToken);
     }
 
-    public async Task LogoutAsync(string refreshTokenValue, string? ipAddress, CancellationToken ct = default)
+    public async Task<RefreshTokenValidationResult> ValidateRefreshOwnershipAsync(
+        string refreshTokenValue,
+        Guid userId,
+        CancellationToken ct = default)
     {
         var currentRefreshToken = await _refreshTokenService.ValidateRefreshTokenAsync(refreshTokenValue, ct);
-        await _refreshTokenService.RevokeRefreshTokenAsync(currentRefreshToken, ipAddress, ct);
+
+        if (currentRefreshToken.UserId != userId)
+            throw new UnauthorizedAccessException("Refresh token não pertence ao usuário autenticado.");
+
+        return new RefreshTokenValidationResult(
+            IsValid: true,
+            UserId: currentRefreshToken.UserId,
+            ExpiresAt: currentRefreshToken.ExpiresAt);
     }
+
+    private string GenerateAccessToken(User user, TicketValidationType ticketValidation)
+        => ticketValidation switch
+        {
+            TicketValidationType.JwtOnly => _tokenService.GenerateToken(user, AccessTokenLifetime),
+            _ => throw new InvalidOperationException("Tipo de validação de ticket não suportado.")
+        };
 
     private static AuthSessionResult BuildSessionResult(
         User user,

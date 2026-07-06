@@ -10,3 +10,8 @@ public record AuthSessionResult(
     AuthenticatedUserResult User,
     string RefreshToken,
     DateTime RefreshTokenExpiresAt);
+
+public record RefreshTokenValidationResult(
+    bool IsValid,
+    Guid UserId,
+    DateTime ExpiresAt);

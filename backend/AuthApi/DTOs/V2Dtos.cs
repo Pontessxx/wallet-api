@@ -12,3 +12,8 @@ public record V2AuthSessionResponse(
 public record V2RefreshResponse(
     string AccessToken,
     int ExpiresIn);
+
+public record V2RefreshValidationResponse(
+    bool IsValid,
+    Guid UserId,
+    DateTime ExpiresAt);

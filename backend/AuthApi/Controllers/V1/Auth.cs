@@ -5,7 +5,6 @@ namespace AuthApi.Controllers;
 [ApiExplorerSettings(GroupName = "v1")]
 public class AuthController : ControllerBase
 {
-    private const int ResetCodeLength = 6;
     private readonly AuthService _authService;
 
     public AuthController(AuthService authService)
@@ -70,20 +69,27 @@ public class AuthController : ControllerBase
     /// </summary>
     /// <param name="request">Nome do usuário que vai receber o código</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Código de redefinição e prazo de expiração</returns>
-    /// <response code="200">Código gerado com sucesso</response>
+    /// <returns>Confirmação da solicitação de redefinição</returns>
+    /// <response code="200">Solicitação processada com sucesso</response>
     [HttpPost("reset-code")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(PasswordResetCodeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GenerateResetCode([FromBody] ResetCodeRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Username))
             return BadRequest(new { message = "Username é obrigatório." });
 
-        var result = await _authService.GeneratePasswordResetCodeAsync(request.Username, ct);
-
-        return Ok(new PasswordResetCodeResponse(result.Code, result.ExpiresAt));
+        try
+        {
+            var result = await _authService.GeneratePasswordResetCodeAsync(request.Username, ct);
+            return Ok(new PasswordResetCodeResponse(result.Code, result.ExpiresAt));
+        }
+        catch (InvalidOperationException)
+        {
+            return BadRequest(new { message = "Usuário não encontrado." });
+        }
     }
 
 
@@ -101,13 +107,26 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ChangePasswordResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(request.Username)
+            || string.IsNullOrWhiteSpace(request.ResetCode)
+            || string.IsNullOrWhiteSpace(request.NewPassword)
+            || request.NewPassword.Length < 8)
+        {
+            return BadRequest(new { message = "Dados inválidos. Informe username, reset code e uma nova senha com no mínimo 8 caracteres." });
+        }
+
         try
         {
             await _authService.ChangePasswordAsync(request.Username, request.ResetCode, request.NewPassword, ct);
 
             return Ok(new ChangePasswordResponse("Senha atualizada com sucesso."));
+        }
+        catch (InvalidOperationException)
+        {
+            return Unauthorized(new { message = "Código de redefinição inválido ou expirado." });
         }
         catch (UnauthorizedAccessException)
         {

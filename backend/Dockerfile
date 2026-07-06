@@ -17,8 +17,7 @@ COPY . .
 RUN dotnet publish AuthApi/AuthApi.csproj \
     -c Release \
     -o /app/publish \
-    -p:Version=${VERSION} \
-    --no-restore
+    -p:Version=${VERSION}
 
 # =========================
 # Runtime
