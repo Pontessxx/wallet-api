@@ -11,10 +11,12 @@ public class ContaCarteiraRepository : IContaCarteiraRepository
 
     public Task<ContaCarteira?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => _context.WalletAccounts
+            .Include(w => w.Carteira)
             .FirstOrDefaultAsync(w => w.Id == id, ct);
 
     public Task<List<ContaCarteira>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
         => _context.WalletAccounts
+            .Include(w => w.Carteira)
             .Where(w => w.UserId == userId)
             .ToListAsync(ct);
 
@@ -24,6 +26,12 @@ public class ContaCarteiraRepository : IContaCarteiraRepository
 
     public async Task AddAsync(ContaCarteira contaCarteira, CancellationToken ct = default)
         => await _context.WalletAccounts.AddAsync(contaCarteira, ct);
+
+    public Task DeleteAsync(ContaCarteira contaCarteira, CancellationToken ct = default)
+    {
+        _context.WalletAccounts.Remove(contaCarteira);
+        return Task.CompletedTask;
+    }
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => _context.SaveChangesAsync(ct);

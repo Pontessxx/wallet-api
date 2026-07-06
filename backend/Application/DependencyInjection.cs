@@ -7,6 +7,7 @@ public static class DependencyInjection
         services.AddScoped<IResetCodeValidator, ResetCodeValidator>();
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
+        services.AddScoped<ContaCarteiraService>();
 
         return services;
     }

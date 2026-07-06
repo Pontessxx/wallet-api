@@ -35,3 +35,28 @@ public record UserResponse(
     Guid Id,
     string Username,
     string Role);
+
+public record CreateContaCarteiraRequest(
+    string Nome,
+    string Categoria,
+    string Descricao,
+    decimal SaldoInicial);
+
+public record CarteiraResponse(
+    Guid Id,
+    string Descricao,
+    decimal SaldoInicial,
+    decimal Receitas,
+    decimal Despesas,
+    decimal Transferencias,
+    decimal Saldo,
+    decimal SaldoProjetado);
+
+public record ContaCarteiraResponse(
+    Guid Id,
+    string Nome,
+    string Categoria,
+    CarteiraResponse Carteira);
+
+public record UpdateCarteiraRequest(
+    string Descricao);
