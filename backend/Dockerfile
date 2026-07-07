@@ -28,6 +28,10 @@ ARG VERSION=1.0.0
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 LABEL app="auth-api"
 LABEL version="${VERSION}"
 

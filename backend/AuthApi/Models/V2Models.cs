@@ -1,4 +1,4 @@
-namespace AuthApi.DTOs;
+namespace AuthApi.Models;
 
 public record V2AuthenticatedUserResponse(
     Guid Id,

@@ -1,4 +1,4 @@
-namespace AuthApi.DTOs;
+namespace AuthApi.Models;
 
 public record LoginRequest(
     string Username,
@@ -38,7 +38,6 @@ public record UserResponse(
 
 public record CreateCarteiraRequest(
     string Nome,
-    WalletCategory Categoria,
     decimal SaldoInicial);
 
 public record EditCarteiraRequest(
@@ -47,18 +46,3 @@ public record EditCarteiraRequest(
     WalletCategory Categoria);
 
 public record RemoveCarteiraRequest(Guid Id);
-
-public record CarteiraResponse(
-    Guid Id,
-    string Nome,
-    WalletCategory Categoria,
-    decimal SaldoInicial,
-    decimal Receitas,
-    decimal Despesas,
-    decimal Transferencias,
-    decimal Saldo,
-    decimal SaldoProjetado);
-
-public record WalletSummaryResponse(
-    List<CarteiraResponse> Carteiras,
-    decimal SaldoTotal);
