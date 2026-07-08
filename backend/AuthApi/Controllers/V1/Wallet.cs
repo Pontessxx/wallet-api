@@ -17,7 +17,7 @@ public class WalletController : ControllerBase
 	/// Lista todas as contas carteira do usuário autenticado.
 	/// </summary>
 	[HttpGet("accounts")]
-	[ProducesResponseType(typeof(List<CarteiraResult>), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(WalletAccountsResult), StatusCodes.Status200OK)]
 	[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 	public async Task<IActionResult> GetAll(CancellationToken ct)
 	{

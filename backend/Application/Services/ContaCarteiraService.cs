@@ -9,10 +9,11 @@ public class ContaCarteiraService
         _carteiraRepository = carteiraRepository;
     }
 
-    public async Task<List<CarteiraResult>> GetAllAsync(Guid userId, CancellationToken ct = default)
+    public async Task<WalletAccountsResult> GetAllAsync(Guid userId, CancellationToken ct = default)
     {
         var carteiras = await _carteiraRepository.GetByUserIdAsync(userId, ct);
-        return carteiras.Select(c => c.ToResult()).ToList();
+        var carteirasResult = carteiras.Select(c => c.ToResult()).ToList();
+        return new WalletAccountsResult(carteirasResult);
     }
 
     public async Task<CarteiraResult> CreateAsync(Guid userId, string nome, WalletCategory categoria, decimal saldoInicial, CancellationToken ct = default)

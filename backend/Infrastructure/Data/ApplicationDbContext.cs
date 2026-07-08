@@ -11,6 +11,7 @@ namespace Infrastructure.Data
         public DbSet<Carteira> Carteiras => Set<Carteira>();
         public DbSet<TransferenciaCarteira> TransferenciasCarteira => Set<TransferenciaCarteira>();
         public DbSet<TransacaoBolsa> TransacoesBolsa => Set<TransacaoBolsa>();
+        public DbSet<Transacoes> Transacoes => Set<Transacoes>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -167,6 +168,45 @@ namespace Infrastructure.Data
 
                 entity.HasOne(e => e.Carteira)
                     .WithMany(e => e.TransacoesBolsa)
+                    .HasForeignKey(e => e.CarteiraId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Transacoes>(entity =>
+            {
+                entity.ToTable("transactions", table =>
+                {
+                    table.HasCheckConstraint("ck_transactions_amount_positive", "amount > 0");
+                    table.HasCheckConstraint("ck_transactions_charges_non_negative", "charges >= 0");
+                    table.HasCheckConstraint("ck_transactions_total_amount_consistent", "total_amount = amount + charges");
+                    table.HasCheckConstraint(
+                        "ck_transactions_effective_date",
+                        "(is_effective = false AND effective_at IS NULL) OR (is_effective = true AND effective_at IS NOT NULL AND effective_at >= posted_at)");
+                });
+
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.CarteiraId).HasColumnName("wallet_id");
+                entity.Property(e => e.Tipo).HasColumnName("type").IsRequired().HasMaxLength(80);
+                entity.Property(e => e.Valor).HasColumnName("amount").HasPrecision(18, 2);
+                entity.Property(e => e.Encargos).HasColumnName("charges").HasPrecision(18, 2).HasDefaultValue(0m);
+                entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);
+                entity.Property(e => e.Efetivada).HasColumnName("is_effective").HasDefaultValue(false);
+                entity.Property(e => e.DataLancamento).HasColumnName("posted_at");
+                entity.Property(e => e.DataVencimento).HasColumnName("due_date");
+                entity.Property(e => e.DataEfetivacao).HasColumnName("effective_at");
+                entity.Property(e => e.Observacoes).HasColumnName("notes").HasMaxLength(300);
+                entity.Property(e => e.CriadaEm).HasColumnName("created_at").HasDefaultValueSql("now()");
+                entity.Property(e => e.AtualizadaEm).HasColumnName("updated_at");
+
+                entity.HasIndex(e => e.CarteiraId);
+                entity.HasIndex(e => e.Tipo);
+                entity.HasIndex(e => e.DataLancamento);
+                entity.HasIndex(e => e.DataVencimento);
+                entity.HasIndex(e => e.Efetivada);
+
+                entity.HasOne(e => e.Carteira)
+                    .WithMany()
                     .HasForeignKey(e => e.CarteiraId)
                     .OnDelete(DeleteBehavior.Cascade);
             });

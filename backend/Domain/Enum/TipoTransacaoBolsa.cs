@@ -1,6 +1,6 @@
 namespace Auth.Domain
 {
-    public enum LadoTransacaoBolsa
+    public enum TipoTransacaoBolsa
     {
         Compra,
         Venda
