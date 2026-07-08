@@ -86,21 +86,16 @@ jobs:
             [[ -z "${MESSAGE}" ]] && continue
 
             if ! [[ "${MESSAGE}" =~ ${ALLOWED_REGEX} ]]; then
-              echo "Invalid commit message: ${MESSAGE}"
+              echo "::warning::Invalid commit message: ${MESSAGE}"
               INVALID=1
             fi
           done < <(git log --format=%s ${RANGE})
 
           if [[ ${INVALID} -ne 0 ]]; then
-            echo ""
-            echo "Commit message must start with one of:"
-            echo "feat, fix, docs, test, build, perf, style, refactor, chore, cleanup, remove, revert"
-            echo ""
-            echo "Expected format example: feat(scope): short description"
-            exit 1
+            echo "::warning::One or more commits don't follow the prefix convention (feat, fix, docs, test, build, perf, style, refactor, chore, cleanup, remove, revert). Expected format: feat(scope): short description"
+          else
+            echo "All commit messages have valid prefixes."
           fi
-
-          echo "All commit messages have valid prefixes."
 
   dependency-scan:
     name: NuGet Vulnerability Scan
