@@ -46,3 +46,194 @@ public record EditCarteiraRequest(
     WalletCategory Categoria);
 
 public record RemoveCarteiraRequest(Guid Id);
+
+public abstract record TransactionUpsertRequest(
+    Guid CarteiraId,
+    Guid? CarteiraDestinoId,
+    decimal Valor,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes);
+
+public record CreateTransactionRequest(
+    Guid CarteiraId,
+    Guid? CarteiraDestinoId,
+    decimal Valor,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes)
+    : TransactionUpsertRequest(
+        CarteiraId,
+        CarteiraDestinoId,
+        Valor,
+        Encargos,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes);
+
+public record UpdateTransactionRequest(
+    Guid CarteiraId,
+    Guid? CarteiraDestinoId,
+    decimal Valor,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes)
+    : TransactionUpsertRequest(
+        CarteiraId,
+        CarteiraDestinoId,
+        Valor,
+        Encargos,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes);
+
+public abstract record TransactionBaseResult(
+    Guid Id,
+    Guid CarteiraId,
+    decimal Valor,
+    decimal Encargos,
+    decimal ValorTotal,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes,
+    DateTime CriadaEm,
+    DateTime? AtualizadaEm);
+
+public record TransactionResult(
+    Guid Id,
+    Guid CarteiraId,
+    Guid? CarteiraDestinoId,
+    TipoTransacoes Tipo,
+    decimal Valor,
+    decimal Encargos,
+    decimal ValorTotal,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes,
+    DateTime CriadaEm,
+    DateTime? AtualizadaEm)
+    : TransactionBaseResult(
+        Id,
+        CarteiraId,
+        Valor,
+        Encargos,
+        ValorTotal,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes,
+        CriadaEm,
+        AtualizadaEm);
+
+public record TransactionHistoryResult(
+    List<TransactionResult> Transacoes);
+
+public abstract record ExchangeUpsertRequest(
+    Guid CarteiraId,
+    string CodigoAtivo,
+    decimal Quantidade,
+    decimal PrecoUnitario,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes);
+
+public record CreateExchangeRequest(
+    Guid CarteiraId,
+    string CodigoAtivo,
+    decimal Quantidade,
+    decimal PrecoUnitario,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes)
+    : ExchangeUpsertRequest(
+        CarteiraId,
+        CodigoAtivo,
+        Quantidade,
+        PrecoUnitario,
+        Encargos,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes);
+
+public record UpdateExchangeRequest(
+    Guid CarteiraId,
+    string CodigoAtivo,
+    decimal Quantidade,
+    decimal PrecoUnitario,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes)
+    : ExchangeUpsertRequest(
+        CarteiraId,
+        CodigoAtivo,
+        Quantidade,
+        PrecoUnitario,
+        Encargos,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes);
+
+public record ExchangeTransactionResult(
+    Guid Id,
+    Guid CarteiraId,
+    string CodigoAtivo,
+    TipoTransacaoBolsa Lado,
+    decimal Quantidade,
+    decimal PrecoUnitario,
+    decimal Valor,
+    decimal Encargos,
+    decimal ValorTotal,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes,
+    DateTime CriadaEm,
+    DateTime? AtualizadaEm)
+    : TransactionBaseResult(
+        Id,
+        CarteiraId,
+        Valor,
+        Encargos,
+        ValorTotal,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes,
+        CriadaEm,
+        AtualizadaEm);
+
+public record ExchangeHistoryResult(
+    List<ExchangeTransactionResult> Transacoes);
