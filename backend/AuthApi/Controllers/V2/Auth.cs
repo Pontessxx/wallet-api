@@ -46,7 +46,8 @@ public class AuthController : ControllerBase
 			return Ok(new V2AuthSessionResponse(
 				session.AccessToken,
 				session.ExpiresIn,
-				new V2AuthenticatedUserResponse(session.User.Id, session.User.Username)));
+				session.User.Id,
+				session.User.Username));
 		}
 		catch (UnauthorizedAccessException)
 		{
@@ -138,6 +139,40 @@ public class AuthController : ControllerBase
 		}
 	}
 
+	/// <summary>
+	/// Encerra a sessão do usuário autenticado, removendo o cookie de refresh token
+	/// e revogando os refresh tokens ativos do usuário.
+	/// </summary>
+	/// <param name="ticketValidation">Header de validação com o TicketValidation</param>
+	/// <param name="ct">Cancellation token</param>
+	/// <returns>Sem conteúdo quando o logout for processado</returns>
+	/// <response code="204">Logout processado com sucesso</response>
+	/// <response code="400">Header X-TicketValidation ausente ou inválido</response>
+	/// <response code="401">Access token inválido ou sem claim de usuário</response>
+	[HttpDelete("logout")]
+	[Authorize]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+	public async Task<IActionResult> Logout(
+		[FromHeader(Name = "X-TicketValidation")] TicketValidationType ticketValidation,
+		CancellationToken ct)
+	{
+		if (!IsValidJwtTicketValidation(ticketValidation))
+			return BadRequest(new { message = "Header X-TicketValidation ausente ou inválido." });
+
+		if (!TryGetAuthenticatedUserId(out var userId))
+			return Unauthorized(new { message = "Access token inválido ou sem claim de usuário." });
+
+		Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken);
+
+		await _authService.LogoutAsync(userId, refreshToken, GetClientIp(), ct);
+
+		DeleteRefreshTokenCookie();
+
+		return NoContent();
+	}
+
 	private string? GetClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
 	private void AppendRefreshTokenCookie(string refreshToken, DateTime expiresAt)
@@ -152,6 +187,19 @@ public class AuthController : ControllerBase
 				SameSite = SameSiteMode.Strict,
 				Path = "/",
 				Expires = expiresAt
+			});
+	}
+
+	private void DeleteRefreshTokenCookie()
+	{
+		Response.Cookies.Delete(
+			RefreshTokenCookieName,
+			new CookieOptions
+			{
+				HttpOnly = true,
+				Secure = true,
+				SameSite = SameSiteMode.Strict,
+				Path = "/"
 			});
 	}
 

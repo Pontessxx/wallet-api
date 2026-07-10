@@ -77,6 +77,24 @@ public class RefreshTokenService : IRefreshTokenService
         await _refreshTokenRepository.SaveChangesAsync(ct);
     }
 
+    public async Task RevokeActiveRefreshTokensByUserAsync(Guid userId, string? revokedByIp, CancellationToken ct = default)
+    {
+        var activeTokens = await _refreshTokenRepository.GetActiveByUserIdAsync(userId, DateTime.UtcNow, ct);
+
+        if (activeTokens.Count == 0)
+            return;
+
+        var revokedAt = DateTime.UtcNow;
+
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = revokedAt;
+            token.RevokedByIp = revokedByIp;
+        }
+
+        await _refreshTokenRepository.SaveChangesAsync(ct);
+    }
+
     public async Task RemoveExpiredTokensAsync(CancellationToken ct = default)
     {
         var expiredTokens = await _refreshTokenRepository.GetExpiredAsync(DateTime.UtcNow, ct);

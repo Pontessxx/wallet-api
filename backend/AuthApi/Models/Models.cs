@@ -7,7 +7,6 @@ public record LoginRequest(
 public record LoginResponse(
     Guid Id,
     string Token,
-    string Role,
     string Username
     );
 
@@ -33,8 +32,7 @@ public record CreateUserRequest(
 
 public record UserResponse(
     Guid Id,
-    string Username,
-    string Role);
+    string Username);
 
 public record CreateCarteiraRequest(
     string Nome,

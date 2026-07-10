@@ -35,7 +35,7 @@ public class UserController : ControllerBase
         if (user is null)
             return NotFound(new { message = "Usuário não encontrado." });
 
-        return Ok(new UserResponse(user.Id, user.Username, user.Role.ToString()));
+        return Ok(new UserResponse(user.Id, user.Username));
     }
 
     /// <summary>
@@ -56,7 +56,7 @@ public class UserController : ControllerBase
         try
         {
             var user = await _userService.CreateAsync(request.Username, request.Password);
-            var response = new UserResponse(user.Id, user.Username, user.Role.ToString());
+            var response = new UserResponse(user.Id, user.Username);
             return StatusCode(StatusCodes.Status201Created, response);
         }
         catch (InvalidOperationException ex)

@@ -18,5 +18,7 @@ public interface IRefreshTokenService
 
     Task RevokeRefreshTokenAsync(RefreshToken refreshToken, string? revokedByIp, CancellationToken ct = default);
 
+    Task RevokeActiveRefreshTokensByUserAsync(Guid userId, string? revokedByIp, CancellationToken ct = default);
+
     Task RemoveExpiredTokensAsync(CancellationToken ct = default);
 }

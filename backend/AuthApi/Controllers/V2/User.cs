@@ -39,7 +39,8 @@ public class UserController : ControllerBase
 			return Ok(new V2AuthSessionResponse(
 				session.AccessToken,
 				session.ExpiresIn,
-				new V2AuthenticatedUserResponse(session.User.Id, session.User.Username)));
+				session.User.Id,
+				session.User.Username));
 		}
 		catch (InvalidOperationException ex)
 		{

@@ -105,6 +105,30 @@ public class AuthV2Service
             ExpiresAt: currentRefreshToken.ExpiresAt);
     }
 
+    public async Task LogoutAsync(
+        Guid authenticatedUserId,
+        string? refreshTokenValue,
+        string? ipAddress,
+        CancellationToken ct = default)
+    {
+        if (!string.IsNullOrWhiteSpace(refreshTokenValue))
+        {
+            try
+            {
+                var currentRefreshToken = await _refreshTokenService.ValidateRefreshTokenAsync(refreshTokenValue, ct);
+
+                if (currentRefreshToken.UserId == authenticatedUserId)
+                    await _refreshTokenService.RevokeRefreshTokenAsync(currentRefreshToken, ipAddress, ct);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // No-op: invalid or expired token should not block logout.
+            }
+        }
+
+        await _refreshTokenService.RevokeActiveRefreshTokensByUserAsync(authenticatedUserId, ipAddress, ct);
+    }
+
     private string GenerateAccessToken(User user, TicketValidationType ticketValidation)
         => ticketValidation switch
         {

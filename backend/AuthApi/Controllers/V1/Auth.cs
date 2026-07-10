@@ -26,7 +26,7 @@ public class AuthController : ControllerBase
     /// <param name="ticketValidation">Header de validação com o TicketValidation</param>
     /// <param name="request">Credenciais do usuário</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Token JWT e role do usuário</returns>
+    /// <returns>Token JWT e dados básicos do usuário</returns>
     /// <response code="200">Login realizado com sucesso</response>
     /// <response code="400">Header X-TicketValidation ausente ou inválido</response>
     /// <response code="401">Credenciais inválidas</response>
@@ -49,14 +49,13 @@ public class AuthController : ControllerBase
 
             var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
             var userIdValue = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value;
-            var role = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "User";
             var username = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value
                 ?? jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
                 ?? request.Username;
 
             _ = Guid.TryParse(userIdValue, out var userId);
 
-            return Ok(new LoginResponse(Id: userId, Token: token, Role: role, Username: username));
+            return Ok(new LoginResponse(Id: userId, Token: token, Username: username));
         }
         catch (UnauthorizedAccessException)
         {
