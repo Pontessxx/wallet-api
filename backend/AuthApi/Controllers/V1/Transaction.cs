@@ -24,46 +24,32 @@ public class TransactionController : ControllerBase
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpPost("new")]
     [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateTransfer(
         [FromBody] CreateTransferRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
-            return Unauthorized(new { message = "Usuário autenticado inválido." });
+            return this.UnauthorizedError("Usuário autenticado inválido.");
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
-            return BadRequest(new { message = "Carteira informada não pertence ao usuário autenticado." });
+            return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
         if (request.Valor <= 0)
-            return BadRequest(new { message = "Valor deve ser maior que zero." });
+            return this.BadRequestError("Valor deve ser maior que zero.");
 
         if (request.Encargos < 0)
-            return BadRequest(new { message = "Encargos não podem ser negativos." });
+            return this.BadRequestError("Encargos não podem ser negativos.");
 
         if (!walletIds.Contains(request.CarteiraDestinoId))
-            return BadRequest(new { message = "Carteira de destino não pertence ao usuário autenticado." });
+            return this.BadRequestError("Carteira de destino não pertence ao usuário autenticado.");
 
         if (request.CarteiraId == request.CarteiraDestinoId)
-            return BadRequest(new { message = "Carteira de origem e destino devem ser diferentes." });
+            return this.BadRequestError("Carteira de origem e destino devem ser diferentes.");
 
-        var transferencia = new TransferenciaCarteira
-        {
-            Id = Guid.NewGuid(),
-            CarteiraOrigemId = request.CarteiraId,
-            CarteiraDestinoId = request.CarteiraDestinoId,
-            Valor = request.Valor,
-            Encargos = request.Encargos,
-            ValorTotal = request.Valor + request.Encargos,
-            Efetivada = request.Efetivada,
-            DataLancamento = request.DataLancamento,
-            DataVencimento = request.DataVencimento,
-            DataEfetivacao = request.Efetivada ? request.DataEfetivacao ?? DateTime.UtcNow : null,
-            Observacoes = request.Observacoes,
-            CriadaEm = DateTime.UtcNow
-        };
+        var transferencia = request.ToEntity();
 
         await _dbContext.TransferenciasCarteira.AddAsync(transferencia, ct);
         await _dbContext.SaveChangesAsync(ct);
@@ -84,63 +70,62 @@ public class TransactionController : ControllerBase
     /// <response code="404">Transferência não encontrada</response>
     [HttpPut("edit/{id:guid}")]
     [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateTransfer(
         Guid id,
         [FromBody] UpdateTransferRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
-            return Unauthorized(new { message = "Usuário autenticado inválido." });
+            return this.UnauthorizedError("Usuário autenticado inválido.");
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
-            return BadRequest(new { message = "Carteira informada não pertence ao usuário autenticado." });
+            return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
         if (request.Valor <= 0)
-            return BadRequest(new { message = "Valor deve ser maior que zero." });
+            return this.BadRequestError("Valor deve ser maior que zero.");
 
         if (request.Encargos < 0)
-            return BadRequest(new { message = "Encargos não podem ser negativos." });
+            return this.BadRequestError("Encargos não podem ser negativos.");
 
         if (!walletIds.Contains(request.CarteiraDestinoId))
-            return BadRequest(new { message = "Carteira de destino não pertence ao usuário autenticado." });
+            return this.BadRequestError("Carteira de destino não pertence ao usuário autenticado.");
 
         if (request.CarteiraId == request.CarteiraDestinoId)
-            return BadRequest(new { message = "Carteira de origem e destino devem ser diferentes." });
+            return this.BadRequestError("Carteira de origem e destino devem ser diferentes.");
 
         var transferencia = await _dbContext.TransferenciasCarteira
             .FirstOrDefaultAsync(t => t.Id == id && (walletIds.Contains(t.CarteiraOrigemId) || walletIds.Contains(t.CarteiraDestinoId)), ct);
 
         if (transferencia is null)
-            return NotFound(new { message = "Transferência não encontrada." });
+            return this.NotFoundError("Transferência não encontrada.");
 
-        transferencia.CarteiraOrigemId = request.CarteiraId;
-        transferencia.CarteiraDestinoId = request.CarteiraDestinoId;
-        transferencia.Valor = request.Valor;
-        transferencia.Encargos = request.Encargos;
-        transferencia.ValorTotal = request.Valor + request.Encargos;
-        transferencia.Efetivada = request.Efetivada;
-        transferencia.DataLancamento = request.DataLancamento;
-        transferencia.DataVencimento = request.DataVencimento;
-        transferencia.DataEfetivacao = request.Efetivada ? request.DataEfetivacao ?? DateTime.UtcNow : null;
-        transferencia.Observacoes = request.Observacoes;
-        transferencia.AtualizadaEm = DateTime.UtcNow;
+        transferencia.ApplyUpdate(request);
 
         await _dbContext.SaveChangesAsync(ct);
         return Ok(MapTransfer(transferencia));
     }
 
+    /// <summary>
+    /// Retorna uma transação de bolsa pelo ID.
+    /// </summary>
+    /// <param name="id">ID da transação de bolsa</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Transação de bolsa encontrada</returns>
+    /// <response code="200">Transação encontrada com sucesso</response>
+    /// <response code="401">Usuário autenticado inválido</response>
+    /// <response code="404">Transação de bolsa não encontrada</response>
     [HttpGet("exchange/{id:guid}")]
     [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetExchangeById(Guid id, CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
-            return Unauthorized(new { message = "Usuário autenticado inválido." });
+            return this.UnauthorizedError("Usuário autenticado inválido.");
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
 
@@ -149,60 +134,51 @@ public class TransactionController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
         if (exchange is null)
-            return NotFound(new { message = "Transação de bolsa não encontrada." });
+            return this.NotFoundError("Transação de bolsa não encontrada.");
 
         return Ok(MapExchange(exchange));
     }
 
+    /// <summary>
+    /// Registra uma nova transação de bolsa (compra ou venda de ativo).
+    /// </summary>
+    /// <param name="request">Dados da transação (ativo, lado, quantidade, preço e encargos)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Transação de bolsa criada</returns>
+    /// <response code="201">Transação de bolsa criada com sucesso</response>
+    /// <response code="400">Dados inválidos para a transação</response>
+    /// <response code="401">Usuário autenticado inválido</response>
     [HttpPost("exchange")]
     [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateExchange(
         [FromBody] CreateExchangeRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
-            return Unauthorized(new { message = "Usuário autenticado inválido." });
+            return this.UnauthorizedError("Usuário autenticado inválido.");
 
         if (!request.Lado.HasValue)
         {
             var allowedValues = string.Join(", ", Enum.GetNames<TipoTransacaoBolsa>());
-            return BadRequest(new { message = $"Campo lado é obrigatório. Valores permitidos: {allowedValues}." });
+            return this.BadRequestError($"Campo lado é obrigatório. Valores permitidos: {allowedValues}.");
         }
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
-            return BadRequest(new { message = "Carteira informada não pertence ao usuário autenticado." });
+            return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
         if (request.Quantidade <= 0)
-            return BadRequest(new { message = "Quantidade deve ser maior que zero." });
+            return this.BadRequestError("Quantidade deve ser maior que zero.");
 
         if (request.PrecoUnitario <= 0)
-            return BadRequest(new { message = "Preço unitário deve ser maior que zero." });
+            return this.BadRequestError("Preço unitário deve ser maior que zero.");
 
         if (request.Encargos < 0)
-            return BadRequest(new { message = "Encargos não podem ser negativos." });
+            return this.BadRequestError("Encargos não podem ser negativos.");
 
-        var valor = request.Quantidade * request.PrecoUnitario;
-        var exchange = new TransacaoBolsa
-        {
-            Id = Guid.NewGuid(),
-            CarteiraId = request.CarteiraId,
-            CodigoAtivo = request.CodigoAtivo.Trim().ToUpperInvariant(),
-            Lado = request.Lado.Value,
-            Quantidade = request.Quantidade,
-            PrecoUnitario = request.PrecoUnitario,
-            Valor = valor,
-            Encargos = request.Encargos,
-            ValorTotal = valor + request.Encargos,
-            Efetivada = request.Efetivada,
-            DataLancamento = request.DataLancamento,
-            DataVencimento = request.DataVencimento,
-            DataEfetivacao = request.Efetivada ? request.DataEfetivacao ?? DateTime.UtcNow : null,
-            Observacoes = request.Observacoes,
-            CriadaEm = DateTime.UtcNow
-        };
+        var exchange = request.ToEntity();
 
         await _dbContext.TransacoesBolsa.AddAsync(exchange, ct);
         await _dbContext.SaveChangesAsync(ct);
@@ -210,80 +186,85 @@ public class TransactionController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, MapExchange(exchange));
     }
 
+    /// <summary>
+    /// Atualiza uma transação de bolsa existente.
+    /// </summary>
+    /// <param name="id">ID da transação de bolsa</param>
+    /// <param name="request">Novos dados da transação</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Transação de bolsa atualizada</returns>
+    /// <response code="200">Transação de bolsa atualizada com sucesso</response>
+    /// <response code="400">Dados inválidos para a transação</response>
+    /// <response code="401">Usuário autenticado inválido</response>
+    /// <response code="404">Transação de bolsa não encontrada</response>
     [HttpPut("exchange/edit/{id:guid}")]
     [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateExchange(
         Guid id,
         [FromBody] UpdateExchangeRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
-            return Unauthorized(new { message = "Usuário autenticado inválido." });
+            return this.UnauthorizedError("Usuário autenticado inválido.");
 
         if (!request.Lado.HasValue)
         {
             var allowedValues = string.Join(", ", Enum.GetNames<TipoTransacaoBolsa>());
-            return BadRequest(new { message = $"Campo lado é obrigatório. Valores permitidos: {allowedValues}." });
+            return this.BadRequestError($"Campo lado é obrigatório. Valores permitidos: {allowedValues}.");
         }
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
-            return BadRequest(new { message = "Carteira informada não pertence ao usuário autenticado." });
+            return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
         if (request.Quantidade <= 0)
-            return BadRequest(new { message = "Quantidade deve ser maior que zero." });
+            return this.BadRequestError("Quantidade deve ser maior que zero.");
 
         if (request.PrecoUnitario <= 0)
-            return BadRequest(new { message = "Preço unitário deve ser maior que zero." });
+            return this.BadRequestError("Preço unitário deve ser maior que zero.");
 
         if (request.Encargos < 0)
-            return BadRequest(new { message = "Encargos não podem ser negativos." });
+            return this.BadRequestError("Encargos não podem ser negativos.");
 
         var exchange = await _dbContext.TransacoesBolsa
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
         if (exchange is null)
-            return NotFound(new { message = "Transação de bolsa não encontrada." });
+            return this.NotFoundError("Transação de bolsa não encontrada.");
 
-        var valor = request.Quantidade * request.PrecoUnitario;
-
-        exchange.CarteiraId = request.CarteiraId;
-        exchange.CodigoAtivo = request.CodigoAtivo.Trim().ToUpperInvariant();
-        exchange.Lado = request.Lado.Value;
-        exchange.Quantidade = request.Quantidade;
-        exchange.PrecoUnitario = request.PrecoUnitario;
-        exchange.Valor = valor;
-        exchange.Encargos = request.Encargos;
-        exchange.ValorTotal = valor + request.Encargos;
-        exchange.Efetivada = request.Efetivada;
-        exchange.DataLancamento = request.DataLancamento;
-        exchange.DataVencimento = request.DataVencimento;
-        exchange.DataEfetivacao = request.Efetivada ? request.DataEfetivacao ?? DateTime.UtcNow : null;
-        exchange.Observacoes = request.Observacoes;
-        exchange.AtualizadaEm = DateTime.UtcNow;
+        exchange.ApplyUpdate(request);
 
         await _dbContext.SaveChangesAsync(ct);
         return Ok(MapExchange(exchange));
     }
 
+    /// <summary>
+    /// Retorna o histórico de transações de bolsa do usuário autenticado.
+    /// </summary>
+    /// <param name="exchangeTypeFilter">Filtro opcional por tipo de transação (Compra ou Venda)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Lista de transações de bolsa ordenada por data de lançamento</returns>
+    /// <response code="200">Histórico retornado com sucesso</response>
+    /// <response code="400">Parâmetro de filtro inválido</response>
+    /// <response code="401">Usuário autenticado inválido</response>
     [HttpGet("exchange/history")]
     [ProducesResponseType(typeof(ExchangeHistoryResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetExchangeHistory(
         [FromQuery(Name = "lado")] TipoTransacaoBolsa? exchangeTypeFilter,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
-            return Unauthorized(new { message = "Usuário autenticado inválido." });
+            return this.UnauthorizedError("Usuário autenticado inválido.");
 
         if (!ModelState.IsValid)
         {
             var allowedValues = string.Join(", ", Enum.GetNames<TipoTransacaoBolsa>());
-            return BadRequest(new { message = $"Parâmetro de query lado inválido. Valores permitidos: {allowedValues}." });
+            return this.BadRequestError($"Parâmetro de query lado inválido. Valores permitidos: {allowedValues}.");
         }
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
@@ -303,21 +284,30 @@ public class TransactionController : ControllerBase
         return Ok(new ExchangeHistoryResult(historico));
     }
 
+    /// <summary>
+    /// Remove uma transação de bolsa pelo ID.
+    /// </summary>
+    /// <param name="id">ID da transação de bolsa a ser removida</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Sem conteúdo</returns>
+    /// <response code="204">Transação de bolsa removida com sucesso</response>
+    /// <response code="401">Usuário autenticado inválido</response>
+    /// <response code="404">Transação de bolsa não encontrada</response>
     [HttpDelete("exchange/remove/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteExchange(Guid id, CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
-            return Unauthorized(new { message = "Usuário autenticado inválido." });
+            return this.UnauthorizedError("Usuário autenticado inválido.");
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
         var exchange = await _dbContext.TransacoesBolsa
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
         if (exchange is null)
-            return NotFound(new { message = "Transação de bolsa não encontrada." });
+            return this.NotFoundError("Transação de bolsa não encontrada.");
 
         _dbContext.TransacoesBolsa.Remove(exchange);
         await _dbContext.SaveChangesAsync(ct);

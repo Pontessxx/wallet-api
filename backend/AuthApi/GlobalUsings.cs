@@ -14,6 +14,7 @@ global using Application.Services;
 global using Auth.Domain;
 global using AuthApi.Models;
 global using AuthApi.Extensions;
+global using AuthApi.Mappers;
 global using Infrastructure;
 global using Infrastructure.Data;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;
