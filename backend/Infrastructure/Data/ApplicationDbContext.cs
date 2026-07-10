@@ -187,7 +187,15 @@ namespace Infrastructure.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasColumnName("id");
                 entity.Property(e => e.CarteiraId).HasColumnName("wallet_id");
-                entity.Property(e => e.Tipo).HasColumnName("type").IsRequired().HasMaxLength(80);
+                entity.Property(e => e.Tipo)
+                    .HasColumnName("type")
+                    .HasConversion<string>()
+                    .IsRequired()
+                    .HasMaxLength(80);
+                entity.Property(e => e.Categoria)
+                    .HasColumnName("category")
+                    .HasConversion<string>()
+                    .HasMaxLength(80);
                 entity.Property(e => e.Valor).HasColumnName("amount").HasPrecision(18, 2);
                 entity.Property(e => e.Encargos).HasColumnName("charges").HasPrecision(18, 2).HasDefaultValue(0m);
                 entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);

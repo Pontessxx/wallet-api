@@ -3,7 +3,8 @@ namespace Auth.Domain
     public class Transacoes : TransacaoBase
     {
         public Guid CarteiraId { get; set; }
-        public string Tipo { get; set; } = null!;
+        public TipoTransacoes Tipo { get; set; }
+        public CategoriaTransacao? Categoria { get; set; }
 
         public Carteira Carteira { get; set; } = null!;
     }

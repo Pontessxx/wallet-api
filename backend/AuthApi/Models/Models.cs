@@ -45,9 +45,9 @@ public record EditCarteiraRequest(
 
 public record RemoveCarteiraRequest(Guid Id);
 
-public abstract record TransactionUpsertRequest(
+public abstract record TransferUpsertRequest(
     Guid CarteiraId,
-    Guid? CarteiraDestinoId,
+    Guid CarteiraDestinoId,
     decimal Valor,
     decimal Encargos,
     bool Efetivada,
@@ -56,9 +56,9 @@ public abstract record TransactionUpsertRequest(
     DateTime? DataEfetivacao,
     string? Observacoes);
 
-public record CreateTransactionRequest(
+public record CreateTransferRequest(
     Guid CarteiraId,
-    Guid? CarteiraDestinoId,
+    Guid CarteiraDestinoId,
     decimal Valor,
     decimal Encargos,
     bool Efetivada,
@@ -66,7 +66,7 @@ public record CreateTransactionRequest(
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
     string? Observacoes)
-    : TransactionUpsertRequest(
+    : TransferUpsertRequest(
         CarteiraId,
         CarteiraDestinoId,
         Valor,
@@ -77,9 +77,9 @@ public record CreateTransactionRequest(
         DataEfetivacao,
         Observacoes);
 
-public record UpdateTransactionRequest(
+public record UpdateTransferRequest(
     Guid CarteiraId,
-    Guid? CarteiraDestinoId,
+    Guid CarteiraDestinoId,
     decimal Valor,
     decimal Encargos,
     bool Efetivada,
@@ -87,9 +87,67 @@ public record UpdateTransactionRequest(
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
     string? Observacoes)
-    : TransactionUpsertRequest(
+    : TransferUpsertRequest(
         CarteiraId,
         CarteiraDestinoId,
+        Valor,
+        Encargos,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes);
+
+public abstract record EntryUpsertRequest(
+    Guid CarteiraId,
+    TipoTransacoes Tipo,
+    CategoriaTransacao Categoria,
+    decimal Valor,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes);
+
+public record CreateEntryRequest(
+    Guid CarteiraId,
+    TipoTransacoes Tipo,
+    CategoriaTransacao Categoria,
+    decimal Valor,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes)
+    : EntryUpsertRequest(
+        CarteiraId,
+        Tipo,
+        Categoria,
+        Valor,
+        Encargos,
+        Efetivada,
+        DataLancamento,
+        DataVencimento,
+        DataEfetivacao,
+        Observacoes);
+
+public record UpdateEntryRequest(
+    Guid CarteiraId,
+    TipoTransacoes Tipo,
+    CategoriaTransacao Categoria,
+    decimal Valor,
+    decimal Encargos,
+    bool Efetivada,
+    DateTime DataLancamento,
+    DateTime? DataVencimento,
+    DateTime? DataEfetivacao,
+    string? Observacoes)
+    : EntryUpsertRequest(
+        CarteiraId,
+        Tipo,
+        Categoria,
         Valor,
         Encargos,
         Efetivada,
@@ -117,6 +175,7 @@ public record TransactionResult(
     Guid CarteiraId,
     Guid? CarteiraDestinoId,
     TipoTransacoes Tipo,
+    CategoriaTransacao? Categoria,
     decimal Valor,
     decimal Encargos,
     decimal ValorTotal,
@@ -146,6 +205,7 @@ public record TransactionHistoryResult(
 
 public abstract record ExchangeUpsertRequest(
     Guid CarteiraId,
+    TipoTransacaoBolsa? Lado,
     string CodigoAtivo,
     decimal Quantidade,
     decimal PrecoUnitario,
@@ -158,6 +218,7 @@ public abstract record ExchangeUpsertRequest(
 
 public record CreateExchangeRequest(
     Guid CarteiraId,
+    TipoTransacaoBolsa? Lado,
     string CodigoAtivo,
     decimal Quantidade,
     decimal PrecoUnitario,
@@ -169,6 +230,7 @@ public record CreateExchangeRequest(
     string? Observacoes)
     : ExchangeUpsertRequest(
         CarteiraId,
+        Lado,
         CodigoAtivo,
         Quantidade,
         PrecoUnitario,
@@ -181,6 +243,7 @@ public record CreateExchangeRequest(
 
 public record UpdateExchangeRequest(
     Guid CarteiraId,
+    TipoTransacaoBolsa? Lado,
     string CodigoAtivo,
     decimal Quantidade,
     decimal PrecoUnitario,
@@ -192,6 +255,7 @@ public record UpdateExchangeRequest(
     string? Observacoes)
     : ExchangeUpsertRequest(
         CarteiraId,
+        Lado,
         CodigoAtivo,
         Quantidade,
         PrecoUnitario,
