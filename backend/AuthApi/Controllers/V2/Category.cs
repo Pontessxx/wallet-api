@@ -1,9 +1,9 @@
-namespace AuthApi.Controllers;
+namespace AuthApi.Controllers.V2;
 
 [ApiController]
-[Route("category/v1")]
+[Route("category/v2")]
 [Authorize]
-[ApiExplorerSettings(GroupName = "v1")]
+[ApiExplorerSettings(GroupName = "v2")]
 public class CategoryController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
@@ -21,7 +21,7 @@ public class CategoryController : ControllerBase
     /// <response code="200">Categorias retornadas com sucesso</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpGet("list")]
-    [ProducesResponseType(typeof(CategoryListResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(V2CategoryListResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> List(CancellationToken ct)
     {
@@ -35,7 +35,7 @@ public class CategoryController : ControllerBase
             .Select(c => MapCategory(c))
             .ToListAsync(ct);
 
-        return Ok(new CategoryListResult(categorias));
+        return Ok(new V2CategoryListResult(categorias));
     }
 
     /// <summary>
@@ -48,10 +48,10 @@ public class CategoryController : ControllerBase
     /// <response code="400">Dados inválidos para a categoria</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpPost("new")]
-    [ProducesResponseType(typeof(CategoryResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(V2CategoryResult), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Create([FromBody] CreateCategoryRequest request, CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] V2CreateCategoryRequest request, CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
@@ -128,6 +128,6 @@ public class CategoryController : ControllerBase
         return Guid.TryParse(userIdValue, out userId);
     }
 
-    private static CategoryResult MapCategory(Category category)
+    private static V2CategoryResult MapCategory(Category category)
         => new(category.Id, category.Nome, category.CriadaEm, category.AtualizadaEm);
 }

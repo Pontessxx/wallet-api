@@ -14,3 +14,15 @@ public record V2RefreshValidationResponse(
     bool IsValid,
     Guid UserId,
     DateTime ExpiresAt);
+
+public record V2CreateCategoryRequest(
+    string Nome);
+
+public record V2CategoryResult(
+    Guid Id,
+    string Nome,
+    DateTime CriadaEm,
+    DateTime? AtualizadaEm);
+
+public record V2CategoryListResult(
+    List<V2CategoryResult> Categorias);
