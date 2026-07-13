@@ -14,21 +14,6 @@ public class WalletController : ControllerBase
 	}
 
 	/// <summary>
-	/// Lista todas as contas carteira do usuário autenticado.
-	/// </summary>
-	[HttpGet("accounts")]
-	[ProducesResponseType(typeof(WalletAccountsResult), StatusCodes.Status200OK)]
-	[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-	public async Task<IActionResult> GetAll(CancellationToken ct)
-	{
-		if (!TryGetAuthenticatedUserId(out var userId))
-			return Unauthorized(new { message = "Usuário autenticado inválido." });
-
-		var carteiras = await _contaCarteiraService.GetAllAsync(userId, ct);
-		return Ok(carteiras);
-	}
-
-	/// <summary>
 	/// Cria uma nova conta carteira para o usuário autenticado.
 	/// </summary>
 	[HttpPost("accounts/create")]

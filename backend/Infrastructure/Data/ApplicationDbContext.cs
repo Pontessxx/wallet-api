@@ -9,6 +9,7 @@ namespace Infrastructure.Data
         public DbSet<User> Users => Set<User>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<Carteira> Carteiras => Set<Carteira>();
+        public DbSet<Category> Categories => Set<Category>();
         public DbSet<TransferenciaCarteira> TransferenciasCarteira => Set<TransferenciaCarteira>();
         public DbSet<TransacaoBolsa> TransacoesBolsa => Set<TransacaoBolsa>();
         public DbSet<Transacoes> Transacoes => Set<Transacoes>();
@@ -81,6 +82,25 @@ namespace Infrastructure.Data
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+                    modelBuilder.Entity<Category>(entity =>
+                    {
+                    entity.ToTable("categories");
+                    entity.HasKey(e => e.Id);
+                    entity.Property(e => e.Id).HasColumnName("id");
+                    entity.Property(e => e.UserId).HasColumnName("user_id");
+                    entity.Property(e => e.Nome).HasColumnName("name").IsRequired().HasMaxLength(80);
+                    entity.Property(e => e.CriadaEm).HasColumnName("created_at").HasDefaultValueSql("now()");
+                    entity.Property(e => e.AtualizadaEm).HasColumnName("updated_at");
+
+                    entity.HasIndex(e => e.UserId);
+                    entity.HasIndex(e => new { e.UserId, e.Nome }).IsUnique();
+
+                    entity.HasOne(e => e.User)
+                        .WithMany(e => e.Categories)
+                        .HasForeignKey(e => e.UserId)
+                        .OnDelete(DeleteBehavior.Cascade);
+                    });
 
             modelBuilder.Entity<TransferenciaCarteira>(entity =>
             {
@@ -192,10 +212,8 @@ namespace Infrastructure.Data
                     .HasConversion<string>()
                     .IsRequired()
                     .HasMaxLength(80);
-                entity.Property(e => e.Categoria)
-                    .HasColumnName("category")
-                    .HasConversion<string>()
-                    .HasMaxLength(80);
+                entity.Property(e => e.CategoriaId)
+                    .HasColumnName("category_id");
                 entity.Property(e => e.Valor).HasColumnName("amount").HasPrecision(18, 2);
                 entity.Property(e => e.Encargos).HasColumnName("charges").HasPrecision(18, 2).HasDefaultValue(0m);
                 entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);
@@ -209,6 +227,7 @@ namespace Infrastructure.Data
 
                 entity.HasIndex(e => e.CarteiraId);
                 entity.HasIndex(e => e.Tipo);
+                entity.HasIndex(e => e.CategoriaId);
                 entity.HasIndex(e => e.DataLancamento);
                 entity.HasIndex(e => e.DataVencimento);
                 entity.HasIndex(e => e.Efetivada);
@@ -217,6 +236,11 @@ namespace Infrastructure.Data
                     .WithMany()
                     .HasForeignKey(e => e.CarteiraId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Categoria)
+                    .WithMany(e => e.Transacoes)
+                    .HasForeignKey(e => e.CategoriaId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

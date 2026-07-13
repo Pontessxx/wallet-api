@@ -34,6 +34,40 @@ public class UserService
     public Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => _repository.GetByIdAsync(id, ct);
 
+    public async Task<User> UpdateAsync(Guid id, string username, CancellationToken ct = default)
+    {
+        var user = await _repository.GetByIdAsync(id, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        var userWithSameUsername = await _repository.GetByUsernameAsync(username, ct);
+        if (userWithSameUsername is not null && userWithSameUsername.Id != id)
+            throw new InvalidOperationException("Já existe um usuário com esse nome.");
+
+        user.Username = username;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _repository.SaveChangesAsync(ct);
+
+        return user;
+    }
+
+    public async Task ChangePasswordAsync(Guid id, string currentPassword, string newPassword, CancellationToken ct = default)
+    {
+        var user = await _repository.GetByIdAsync(id, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        if (!_hasher.Verify(currentPassword, user.PasswordHash))
+            throw new UnauthorizedAccessException("Senha atual inválida.");
+
+        if (_hasher.Verify(newPassword, user.PasswordHash))
+            throw new InvalidOperationException("A nova senha deve ser diferente da senha atual.");
+
+        user.PasswordHash = _hasher.Hash(newPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _repository.SaveChangesAsync(ct);
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var user = await _repository.GetByIdAsync(id, ct)

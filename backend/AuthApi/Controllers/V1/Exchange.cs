@@ -1,29 +1,29 @@
 namespace AuthApi.Controllers;
 
 [ApiController]
-[Route("transfer/v1")]
+[Route("exchange/v1")]
 [Authorize]
 [ApiExplorerSettings(GroupName = "v1")]
-public class TransferController : ControllerBase
+public class ExchangeController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
 
-    public TransferController(ApplicationDbContext dbContext)
+    public ExchangeController(ApplicationDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
     /// <summary>
-    /// Retorna uma transação (receita ou despesa) pelo ID.
+    /// Retorna uma transação de bolsa pelo ID.
     /// </summary>
-    /// <param name="id">ID da transação</param>
+    /// <param name="id">ID da transação de bolsa</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Transação encontrada</returns>
+    /// <returns>Transação de bolsa encontrada</returns>
     /// <response code="200">Transação encontrada com sucesso</response>
     /// <response code="401">Usuário autenticado inválido</response>
-    /// <response code="404">Transação não encontrada</response>
+    /// <response code="404">Transação de bolsa não encontrada</response>
     [HttpGet("list")]
-    [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById([FromQuery] Guid id, CancellationToken ct)
@@ -33,115 +33,133 @@ public class TransferController : ControllerBase
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
 
-        var transacao = await _dbContext.Transacoes
+        var exchange = await _dbContext.TransacoesBolsa
             .AsNoTracking()
-            .Include(t => t.Categoria)
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
-        if (transacao is null)
-            return this.NotFoundError("Transação não encontrada.");
+        if (exchange is null)
+            return this.NotFoundError("Transação de bolsa não encontrada.");
 
-        return Ok(MapTransaction(transacao));
+        return Ok(MapExchange(exchange));
     }
 
     /// <summary>
-    /// Cria uma nova transação (receita ou despesa) na carteira do usuário autenticado.
+    /// Registra uma nova transação de bolsa (compra ou venda de ativo).
     /// </summary>
-    /// <param name="request">Dados da transação (carteira, tipo, categoria, valor e encargos)</param>
+    /// <param name="request">Dados da transação (ativo, lado, quantidade, preço e encargos)</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Transação criada</returns>
-    /// <response code="201">Transação criada com sucesso</response>
+    /// <returns>Transação de bolsa criada</returns>
+    /// <response code="201">Transação de bolsa criada com sucesso</response>
     /// <response code="400">Dados inválidos para a transação</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpPost("new")]
-    [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CreateEntry(
-        [FromBody] CreateEntryRequest request,
+    public async Task<IActionResult> Create(
+        [FromBody] CreateExchangeRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
+        if (!request.Lado.HasValue)
+        {
+            var allowedValues = string.Join(", ", Enum.GetNames<TipoTransacaoBolsa>());
+            return this.BadRequestError($"Campo lado é obrigatório. Valores permitidos: {allowedValues}.");
+        }
+
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
             return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
-        var category = await GetOwnedCategoryAsync(userId, request.CategoriaId, ct);
-        if (category is null)
-            return this.BadRequestError("Categoria informada não pertence ao usuário autenticado.");
+        if (request.Quantidade <= 0)
+            return this.BadRequestError("Quantidade deve ser maior que zero.");
 
-        var transacao = request.ToEntity();
-        transacao.Categoria = category;
+        if (request.PrecoUnitario <= 0)
+            return this.BadRequestError("Preço unitário deve ser maior que zero.");
 
-        await _dbContext.Transacoes.AddAsync(transacao, ct);
+        if (request.Encargos < 0)
+            return this.BadRequestError("Encargos não podem ser negativos.");
+
+        var exchange = request.ToEntity();
+
+        await _dbContext.TransacoesBolsa.AddAsync(exchange, ct);
         await _dbContext.SaveChangesAsync(ct);
 
-        return StatusCode(StatusCodes.Status201Created, MapTransaction(transacao));
+        return StatusCode(StatusCodes.Status201Created, MapExchange(exchange));
     }
 
     /// <summary>
-    /// Atualiza uma transação existente.
+    /// Atualiza uma transação de bolsa existente.
     /// </summary>
-    /// <param name="id">ID da transação</param>
+    /// <param name="id">ID da transação de bolsa</param>
     /// <param name="request">Novos dados da transação</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Transação atualizada</returns>
-    /// <response code="200">Transação atualizada com sucesso</response>
+    /// <returns>Transação de bolsa atualizada</returns>
+    /// <response code="200">Transação de bolsa atualizada com sucesso</response>
     /// <response code="400">Dados inválidos para a transação</response>
     /// <response code="401">Usuário autenticado inválido</response>
-    /// <response code="404">Transação não encontrada</response>
+    /// <response code="404">Transação de bolsa não encontrada</response>
     [HttpPut("edit")]
-    [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateEntry(
+    public async Task<IActionResult> Update(
         [FromQuery] Guid id,
-        [FromBody] UpdateEntryRequest request,
+        [FromBody] UpdateExchangeRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
+        if (!request.Lado.HasValue)
+        {
+            var allowedValues = string.Join(", ", Enum.GetNames<TipoTransacaoBolsa>());
+            return this.BadRequestError($"Campo lado é obrigatório. Valores permitidos: {allowedValues}.");
+        }
+
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
             return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
-        var category = await GetOwnedCategoryAsync(userId, request.CategoriaId, ct);
-        if (category is null)
-            return this.BadRequestError("Categoria informada não pertence ao usuário autenticado.");
+        if (request.Quantidade <= 0)
+            return this.BadRequestError("Quantidade deve ser maior que zero.");
 
-        var transacao = await _dbContext.Transacoes
-            .Include(t => t.Categoria)
+        if (request.PrecoUnitario <= 0)
+            return this.BadRequestError("Preço unitário deve ser maior que zero.");
+
+        if (request.Encargos < 0)
+            return this.BadRequestError("Encargos não podem ser negativos.");
+
+        var exchange = await _dbContext.TransacoesBolsa
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
-        if (transacao is null)
-            return this.NotFoundError("Transação não encontrada.");
+        if (exchange is null)
+            return this.NotFoundError("Transação de bolsa não encontrada.");
 
-        transacao.ApplyUpdate(request);
-        transacao.Categoria = category;
+        exchange.ApplyUpdate(request);
 
         await _dbContext.SaveChangesAsync(ct);
-        return Ok(MapTransaction(transacao));
+        return Ok(MapExchange(exchange));
     }
 
     /// <summary>
-    /// Retorna o histórico de transações do usuário autenticado.
+    /// Retorna o histórico de transações de bolsa do usuário autenticado.
     /// </summary>
-    /// <param name="transactionTypeFilter">Filtro opcional por tipo de transação (Receita ou Despesa)</param>
+    /// <param name="exchangeTypeFilter">Filtro opcional por tipo de transação (Compra ou Venda)</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Lista de transações ordenada por data de lançamento</returns>
+    /// <returns>Lista de transações de bolsa ordenada por data de lançamento</returns>
     /// <response code="200">Histórico retornado com sucesso</response>
     /// <response code="400">Parâmetro de filtro inválido</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpGet("history")]
-    [ProducesResponseType(typeof(TransactionHistoryResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ExchangeHistoryResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetHistory(
-        [FromQuery(Name = "tipo")] TipoTransacoes? transactionTypeFilter,
+        [FromQuery(Name = "lado")] TipoTransacaoBolsa? exchangeTypeFilter,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
@@ -149,37 +167,36 @@ public class TransferController : ControllerBase
 
         if (!ModelState.IsValid)
         {
-            var allowedValues = string.Join(", ", Enum.GetNames<TipoTransacoes>());
-            return this.BadRequestError($"Parâmetro de query tipo inválido. Valores permitidos: {allowedValues}.");
+            var allowedValues = string.Join(", ", Enum.GetNames<TipoTransacaoBolsa>());
+            return this.BadRequestError($"Parâmetro de query lado inválido. Valores permitidos: {allowedValues}.");
         }
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
 
-        var transacoesQuery = _dbContext.Transacoes
+        var exchangeQuery = _dbContext.TransacoesBolsa
             .AsNoTracking()
-            .Include(t => t.Categoria)
             .Where(t => walletIds.Contains(t.CarteiraId));
 
-        if (transactionTypeFilter.HasValue)
-            transacoesQuery = transacoesQuery.Where(t => t.Tipo == transactionTypeFilter.Value);
+        if (exchangeTypeFilter.HasValue)
+            exchangeQuery = exchangeQuery.Where(t => t.Lado == exchangeTypeFilter.Value);
 
-        var historico = await transacoesQuery
+        var historico = await exchangeQuery
             .OrderByDescending(t => t.DataLancamento)
-            .Select(t => MapTransaction(t))
+            .Select(t => MapExchange(t))
             .ToListAsync(ct);
 
-        return Ok(new TransactionHistoryResult(historico));
+        return Ok(new ExchangeHistoryResult(historico));
     }
 
     /// <summary>
-    /// Remove uma transação pelo ID.
+    /// Remove uma transação de bolsa pelo ID.
     /// </summary>
-    /// <param name="id">ID da transação a ser removida</param>
+    /// <param name="id">ID da transação de bolsa a ser removida</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Sem conteúdo</returns>
-    /// <response code="204">Transação removida com sucesso</response>
+    /// <response code="204">Transação de bolsa removida com sucesso</response>
     /// <response code="401">Usuário autenticado inválido</response>
-    /// <response code="404">Transação não encontrada</response>
+    /// <response code="404">Transação de bolsa não encontrada</response>
     [HttpDelete("remove")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
@@ -190,14 +207,13 @@ public class TransferController : ControllerBase
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
-
-        var transacao = await _dbContext.Transacoes
+        var exchange = await _dbContext.TransacoesBolsa
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
-        if (transacao is null)
-            return this.NotFoundError("Transação não encontrada.");
+        if (exchange is null)
+            return this.NotFoundError("Transação de bolsa não encontrada.");
 
-        _dbContext.Transacoes.Remove(transacao);
+        _dbContext.TransacoesBolsa.Remove(exchange);
         await _dbContext.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -221,14 +237,14 @@ public class TransferController : ControllerBase
         return walletIds.ToHashSet();
     }
 
-    private static TransactionResult MapTransaction(Transacoes transacao)
+    private static ExchangeTransactionResult MapExchange(TransacaoBolsa transacao)
         => new(
             transacao.Id,
             transacao.CarteiraId,
-            null,
-            transacao.Tipo,
-            transacao.CategoriaId,
-            transacao.Categoria?.Nome,
+            transacao.CodigoAtivo,
+            transacao.Lado,
+            transacao.Quantidade,
+            transacao.PrecoUnitario,
             transacao.Valor,
             transacao.Encargos,
             transacao.ValorTotal,
@@ -239,8 +255,4 @@ public class TransferController : ControllerBase
             transacao.Observacoes,
             transacao.CriadaEm,
             transacao.AtualizadaEm);
-
-    private Task<Category?> GetOwnedCategoryAsync(Guid userId, Guid categoryId, CancellationToken ct)
-        => _dbContext.Categories
-            .FirstOrDefaultAsync(c => c.Id == categoryId && c.UserId == userId, ct);
 }

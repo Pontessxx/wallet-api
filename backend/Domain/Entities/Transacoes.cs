@@ -4,8 +4,9 @@ namespace Auth.Domain
     {
         public Guid CarteiraId { get; set; }
         public TipoTransacoes Tipo { get; set; }
-        public CategoriaTransacao? Categoria { get; set; }
+        public Guid? CategoriaId { get; set; }
 
         public Carteira Carteira { get; set; } = null!;
+        public Category? Categoria { get; set; }
     }
 }

@@ -66,6 +66,87 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
+    /// Atualiza o username de um usuário.
+    /// </summary>
+    /// <param name="request">Dados para atualização</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Usuário atualizado</returns>
+    /// <response code="200">Usuário atualizado com sucesso</response>
+    /// <response code="404">Usuário não encontrado</response>
+    /// <response code="409">Username já existe</response>
+    [HttpPut("edit")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Edit([FromBody] EditUserRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var user = await _userService.UpdateAsync(request.Id, request.Username, ct);
+            return Ok(new UserResponse(user.Id, user.Username));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("não encontrado", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza a senha do usuário autenticado.
+    /// </summary>
+    /// <param name="request">Senha atual e nova senha</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Mensagem de sucesso</returns>
+    /// <response code="200">Senha atualizada com sucesso</response>
+    /// <response code="400">Dados inválidos</response>
+    /// <response code="401">Senha atual inválida ou usuário não autenticado</response>
+    /// <response code="404">Usuário não encontrado</response>
+    [HttpPut("edit-password")]
+    [Authorize]
+    [ProducesResponseType(typeof(ChangePasswordResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EditPassword([FromBody] EditPasswordRequest request, CancellationToken ct)
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (!Guid.TryParse(userIdValue, out var userId))
+            return Unauthorized(new { message = "Usuário autenticado inválido." });
+
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword)
+            || string.IsNullOrWhiteSpace(request.NewPassword)
+            || request.NewPassword.Length < 8)
+        {
+            return BadRequest(new { message = "Dados inválidos. Informe senha atual e nova senha com no mínimo 8 caracteres." });
+        }
+
+        try
+        {
+            await _userService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword, ct);
+            return Ok(new ChangePasswordResponse("Senha atualizada com sucesso."));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "Senha atual inválida." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("não encontrado", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Remove um usuário pelo ID (soft delete).
     /// </summary>
     /// <param name="id">ID do usuário</param>

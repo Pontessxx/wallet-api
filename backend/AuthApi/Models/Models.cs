@@ -34,6 +34,14 @@ public record UserResponse(
     Guid Id,
     string Username);
 
+public record EditUserRequest(
+    Guid Id,
+    string Username);
+
+public record EditPasswordRequest(
+    string CurrentPassword,
+    string NewPassword);
+
 public record CreateCarteiraRequest(
     string Nome,
     decimal SaldoInicial);
@@ -101,7 +109,7 @@ public record UpdateTransferRequest(
 public abstract record EntryUpsertRequest(
     Guid CarteiraId,
     TipoTransacoes Tipo,
-    CategoriaTransacao Categoria,
+    Guid CategoriaId,
     decimal Valor,
     decimal Encargos,
     bool Efetivada,
@@ -113,7 +121,7 @@ public abstract record EntryUpsertRequest(
 public record CreateEntryRequest(
     Guid CarteiraId,
     TipoTransacoes Tipo,
-    CategoriaTransacao Categoria,
+    Guid CategoriaId,
     decimal Valor,
     decimal Encargos,
     bool Efetivada,
@@ -124,7 +132,7 @@ public record CreateEntryRequest(
     : EntryUpsertRequest(
         CarteiraId,
         Tipo,
-        Categoria,
+        CategoriaId,
         Valor,
         Encargos,
         Efetivada,
@@ -136,7 +144,7 @@ public record CreateEntryRequest(
 public record UpdateEntryRequest(
     Guid CarteiraId,
     TipoTransacoes Tipo,
-    CategoriaTransacao Categoria,
+    Guid CategoriaId,
     decimal Valor,
     decimal Encargos,
     bool Efetivada,
@@ -147,7 +155,7 @@ public record UpdateEntryRequest(
     : EntryUpsertRequest(
         CarteiraId,
         Tipo,
-        Categoria,
+        CategoriaId,
         Valor,
         Encargos,
         Efetivada,
@@ -175,7 +183,8 @@ public record TransactionResult(
     Guid CarteiraId,
     Guid? CarteiraDestinoId,
     TipoTransacoes Tipo,
-    CategoriaTransacao? Categoria,
+    Guid? CategoriaId,
+    string? CategoriaNome,
     decimal Valor,
     decimal Encargos,
     decimal ValorTotal,
@@ -202,6 +211,18 @@ public record TransactionResult(
 
 public record TransactionHistoryResult(
     List<TransactionResult> Transacoes);
+
+public record CreateCategoryRequest(
+    string Nome);
+
+public record CategoryResult(
+    Guid Id,
+    string Nome,
+    DateTime CriadaEm,
+    DateTime? AtualizadaEm);
+
+public record CategoryListResult(
+    List<CategoryResult> Categorias);
 
 public abstract record ExchangeUpsertRequest(
     Guid CarteiraId,

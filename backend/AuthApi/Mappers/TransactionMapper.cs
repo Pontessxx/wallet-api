@@ -82,7 +82,7 @@ public static class TransactionMapper
             Id = Guid.NewGuid(),
             CarteiraId = request.CarteiraId,
             Tipo = request.Tipo,
-            Categoria = request.Categoria,
+            CategoriaId = request.CategoriaId,
             Valor = request.Valor,
             Encargos = request.Encargos,
             ValorTotal = request.Valor + request.Encargos,
@@ -98,7 +98,7 @@ public static class TransactionMapper
     {
         transacao.CarteiraId = request.CarteiraId;
         transacao.Tipo = request.Tipo;
-        transacao.Categoria = request.Categoria;
+        transacao.CategoriaId = request.CategoriaId;
         transacao.Valor = request.Valor;
         transacao.Encargos = request.Encargos;
         transacao.ValorTotal = request.Valor + request.Encargos;
