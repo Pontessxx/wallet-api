@@ -7,11 +7,22 @@ public class AuthController : ControllerBase
 {
 	private const string RefreshTokenCookieName = "refreshToken";
 	private readonly AuthV2Service _authService;
+	private readonly AuthService _legacyAuthService;
 
-	public AuthController(AuthV2Service authService)
+	public AuthController(AuthV2Service authService, AuthService legacyAuthService)
 	{
 		_authService = authService;
+		_legacyAuthService = legacyAuthService;
 	}
+
+	/// <summary>
+	/// Verifica se a API está saudável.
+	/// </summary>
+	/// <returns>Status da aplicação</returns>
+	[HttpGet]
+	[AllowAnonymous]
+	[ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+	public IActionResult Get() => Ok(new { status = "healthy" });
 
 	/// <summary>
 	/// Realiza o login do usuário e retorna o access token em JSON.
@@ -171,6 +182,74 @@ public class AuthController : ControllerBase
 		DeleteRefreshTokenCookie();
 
 		return NoContent();
+	}
+
+	/// <summary>
+	/// Gera um código numérico temporário para redefinição de senha.
+	/// </summary>
+	/// <param name="request">Nome do usuário que vai receber o código</param>
+	/// <param name="ct">Cancellation token</param>
+	/// <returns>Confirmação da solicitação de redefinição</returns>
+	/// <response code="200">Solicitação processada com sucesso</response>
+	[HttpPost("reset-code")]
+	[AllowAnonymous]
+	[ProducesResponseType(typeof(V2PasswordResetCodeResponse), StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+	public async Task<IActionResult> GenerateResetCode([FromBody] V2ResetCodeRequest request, CancellationToken ct)
+	{
+		if (string.IsNullOrWhiteSpace(request.Username))
+			return BadRequest(new { message = "Username é obrigatório." });
+
+		try
+		{
+			var result = await _legacyAuthService.GeneratePasswordResetCodeAsync(request.Username, ct);
+			return Ok(new V2PasswordResetCodeResponse(result.Code, result.ExpiresAt));
+		}
+		catch (InvalidOperationException)
+		{
+			return BadRequest(new { message = "Usuário não encontrado." });
+		}
+	}
+
+	/// <summary>
+	/// Atualiza a senha do usuário informado no body usando username, código de reset e nova senha.
+	/// </summary>
+	/// <param name="request">Nome do usuário, código de redefinição e nova senha</param>
+	/// <param name="ct">Cancellation token</param>
+	/// <returns>Mensagem de sucesso</returns>
+	/// <response code="200">Senha atualizada com sucesso</response>
+	/// <response code="400">Dados inválidos</response>
+	/// <response code="401">Não autenticado</response>
+	[HttpPut("change-password")]
+	[AllowAnonymous]
+	[ProducesResponseType(typeof(V2ChangePasswordResponse), StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+	[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+	public async Task<IActionResult> ChangePassword([FromBody] V2ChangePasswordRequest request, CancellationToken ct)
+	{
+		if (string.IsNullOrWhiteSpace(request.Username)
+			|| string.IsNullOrWhiteSpace(request.ResetCode)
+			|| string.IsNullOrWhiteSpace(request.NewPassword)
+			|| request.NewPassword.Length < 8)
+		{
+			return BadRequest(new { message = "Dados inválidos. Informe username, reset code e uma nova senha com no mínimo 8 caracteres." });
+		}
+
+		try
+		{
+			await _legacyAuthService.ChangePasswordAsync(request.Username, request.ResetCode, request.NewPassword, ct);
+			return Ok(new V2ChangePasswordResponse("Senha atualizada com sucesso."));
+		}
+		catch (InvalidOperationException)
+		{
+			return Unauthorized(new { message = "Código de redefinição inválido ou expirado." });
+		}
+		catch (UnauthorizedAccessException)
+		{
+			return Unauthorized(new { message = "Código de redefinição inválido ou expirado." });
+		}
 	}
 
 	private string? GetClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();

@@ -15,6 +15,21 @@ public record V2RefreshValidationResponse(
     Guid UserId,
     DateTime ExpiresAt);
 
+public record V2PasswordResetCodeResponse(
+    string ResetCode,
+    DateTime ExpiresAt);
+
+public record V2ResetCodeRequest(
+    string Username);
+
+public record V2ChangePasswordRequest(
+    string Username,
+    string ResetCode,
+    string NewPassword);
+
+public record V2ChangePasswordResponse(
+    string Message);
+
 public record V2CreateCategoryRequest(
     string Nome);
 
