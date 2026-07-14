@@ -48,7 +48,8 @@ services:
       context: ./wallet-web
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_API_URL: ${FRONTEND_VITE_API_URL:-/api}
+        VITE_ENABLE_MSW: ${FRONTEND_VITE_ENABLE_MSW:-false}
     container_name: auth-frontend
     restart: unless-stopped
     depends_on:

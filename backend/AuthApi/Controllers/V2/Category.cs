@@ -6,6 +6,22 @@ namespace AuthApi.Controllers.V2;
 [ApiExplorerSettings(GroupName = "v2")]
 public class CategoryController : ControllerBase
 {
+    private const string DefaultIconKey = "tag";
+    private const string DefaultColorHex = "#64748B";
+    private static readonly HashSet<string> AllowedIconKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "tag",
+        "shopping-cart",
+        "car",
+        "house",
+        "briefcase",
+        "heart-pulse",
+        "book-open",
+        "gamepad-2",
+        "plane",
+        "utensils"
+    };
+
     private readonly ApplicationDbContext _dbContext;
 
     public CategoryController(ApplicationDbContext dbContext)
@@ -63,6 +79,14 @@ public class CategoryController : ControllerBase
         if (nome.Length > 80)
             return this.BadRequestError("Nome da categoria deve ter no máximo 80 caracteres.");
 
+        var iconKey = NormalizeIconKey(request.IconKey);
+        if (!AllowedIconKeys.Contains(iconKey))
+            return this.BadRequestError("Ícone de categoria inválido.");
+
+        var colorHex = NormalizeColorHex(request.ColorHex);
+        if (!IsValidHexColor(colorHex))
+            return this.BadRequestError("Cor da categoria inválida. Use o formato hexadecimal #RRGGBB.");
+
         var categoryExists = await _dbContext.Categories
             .AnyAsync(c => c.UserId == userId && c.Nome.ToUpper() == nome.ToUpper(), ct);
 
@@ -74,6 +98,8 @@ public class CategoryController : ControllerBase
             Id = Guid.NewGuid(),
             UserId = userId,
             Nome = nome,
+            IconKey = iconKey,
+            ColorHex = colorHex,
             CriadaEm = DateTime.UtcNow
         };
 
@@ -128,6 +154,42 @@ public class CategoryController : ControllerBase
         return Guid.TryParse(userIdValue, out userId);
     }
 
+    private static string NormalizeIconKey(string? iconKey)
+    {
+        if (string.IsNullOrWhiteSpace(iconKey))
+            return DefaultIconKey;
+
+        return iconKey.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeColorHex(string? colorHex)
+    {
+        if (string.IsNullOrWhiteSpace(colorHex))
+            return DefaultColorHex;
+
+        return colorHex.Trim().ToUpperInvariant();
+    }
+
+    private static bool IsValidHexColor(string colorHex)
+    {
+        if (colorHex.Length != 7 || colorHex[0] != '#')
+            return false;
+
+        for (var i = 1; i < colorHex.Length; i++)
+        {
+            if (!Uri.IsHexDigit(colorHex[i]))
+                return false;
+        }
+
+        return true;
+    }
+
     private static V2CategoryResult MapCategory(Category category)
-        => new(category.Id, category.Nome, category.CriadaEm, category.AtualizadaEm);
+        => new(
+            category.Id,
+            category.Nome,
+            NormalizeIconKey(category.IconKey),
+            NormalizeColorHex(category.ColorHex),
+            category.CriadaEm,
+            category.AtualizadaEm);
 }

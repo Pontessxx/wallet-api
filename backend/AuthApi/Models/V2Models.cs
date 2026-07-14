@@ -31,11 +31,15 @@ public record V2ChangePasswordResponse(
     string Message);
 
 public record V2CreateCategoryRequest(
-    string Nome);
+    string Nome,
+    string? IconKey,
+    string? ColorHex);
 
 public record V2CategoryResult(
     Guid Id,
     string Nome,
+    string IconKey,
+    string ColorHex,
     DateTime CriadaEm,
     DateTime? AtualizadaEm);
 

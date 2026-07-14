@@ -90,6 +90,8 @@ namespace Infrastructure.Data
                     entity.Property(e => e.Id).HasColumnName("id");
                     entity.Property(e => e.UserId).HasColumnName("user_id");
                     entity.Property(e => e.Nome).HasColumnName("name").IsRequired().HasMaxLength(80);
+                    entity.Property(e => e.IconKey).HasColumnName("icon_key").IsRequired().HasMaxLength(40).HasDefaultValue("tag");
+                    entity.Property(e => e.ColorHex).HasColumnName("color_hex").IsRequired().HasMaxLength(7).HasDefaultValue("#64748B");
                     entity.Property(e => e.CriadaEm).HasColumnName("created_at").HasDefaultValueSql("now()");
                     entity.Property(e => e.AtualizadaEm).HasColumnName("updated_at");
 
