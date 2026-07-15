@@ -58,18 +58,155 @@
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/transaction/v1/history` | ✅ | Histórico; filtro opcional `?tipo=` |
-| POST | `/transaction/v1/lancamento` | ✅ | Cria Receita ou Despesa; `tipo` no body |
-| PUT | `/transaction/v1/lancamento` | ✅ | Atualiza lançamento |
-| DELETE | `/transaction/v1/lancamento?id=` | ✅ | Remove lançamento |
-| POST | `/transaction/v1/transfer` | ✅ | Cria transferência entre carteiras |
-| PUT | `/transaction/v1/transfer` | ✅ | Atualiza transferência |
-| DELETE | `/transaction/v1/transfer?id=` | ✅ | Remove transferência |
-| POST | `/transaction/v1/exchange` | ✅ | Cria operação de bolsa |
-| PUT | `/transaction/v1/exchange` | ✅ | Atualiza operação de bolsa |
-| DELETE | `/transaction/v1/exchange?id=` | ✅ | Remove operação de bolsa |
+| POST | `/transaction/v1/new` | ✅ | Cria transferência entre carteiras |
+| PUT | `/transaction/v1/edit?id=` | ✅ | Atualiza transferência |
 
-> Operação de bolsa usa header `X-TipoTransacaoBolsa` (Compra/Venda).
+> No estado atual do código, o controller `transaction/v1` está dedicado ao fluxo de transferência entre carteiras.
+
+---
+
+## Transfer (`/transfer/v1/`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/transfer/v1/list?id=` | ✅ | Busca transação de receita/despesa por ID |
+| POST | `/transfer/v1/new` | ✅ | Cria lançamento (Receita/Despesa) |
+| PUT | `/transfer/v1/edit?id=` | ✅ | Atualiza lançamento |
+| GET | `/transfer/v1/history` | ✅ | Histórico com filtro opcional `?tipo=` |
+| DELETE | `/transfer/v1/remove?id=` | ✅ | Remove lançamento |
+
+---
+
+## Exchange (`/exchange/v1/`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/exchange/v1/list?id=` | ✅ | Busca operação de bolsa por ID |
+| POST | `/exchange/v1/new` | ✅ | Cria operação de bolsa |
+| PUT | `/exchange/v1/edit?id=` | ✅ | Atualiza operação de bolsa |
+| GET | `/exchange/v1/history` | ✅ | Histórico com filtro opcional `?lado=` |
+| DELETE | `/exchange/v1/remove?id=` | ✅ | Remove operação de bolsa |
+
+---
+
+## Contrato Fechado — Filtros de Relatório (GET)
+
+> Objetivo: suportar filtros por período no frontend (datepicker) com datas sem hora (`YYYY-MM-DD`).
+> Recomendação: manter em query params (GET), sem payload/body.
+> Regra de versionamento: a implementação desses filtros deve ser feita na V2. A V1 deve permanecer apenas para compatibilidade/depreciação.
+
+### Versão alvo (obrigatória)
+
+- Implementar em rotas V2 (ex.: `/transfer/v2/history` e `/exchange/v2/history`, ou endpoint consolidado de relatório em `/report/v2/...`).
+- Não evoluir contrato novo em V1.
+
+### Endpoints de histórico
+
+- Transfer: `/transfer/v1/history`
+- Exchange: `/exchange/v1/history`
+
+### Parâmetros por `periodType`
+
+| `periodType` | Obrigatórios | Opcionais |
+|---|---|---|
+| `range` | `startDate`, `endDate` | `tipo`, `categoriaId` (transfer), `lado` (exchange) |
+| `monthly` | `year`, `month` | `tipo`, `categoriaId` (transfer), `lado` (exchange) |
+| `yearly` | `year` | `tipo`, `categoriaId` (transfer), `lado` (exchange) |
+
+### Definição dos parâmetros
+
+| Parâmetro | Tipo | Formato | Regra |
+|---|---|---|---|
+| `periodType` | string | `range \| monthly \| yearly` | Obrigatório |
+| `startDate` | string | `YYYY-MM-DD` | Obrigatório quando `periodType=range` |
+| `endDate` | string | `YYYY-MM-DD` | Obrigatório quando `periodType=range` |
+| `year` | number | `YYYY` | Obrigatório quando `periodType=monthly` ou `yearly` |
+| `month` | number | `1..12` | Obrigatório quando `periodType=monthly` |
+| `tipo` | string | `Receita \| Despesa` | Opcional em `/transfer/v1/history` |
+| `categoriaId` | string | `GUID` | Opcional em `/transfer/v1/history` |
+| `lado` | string | `Compra \| Venda` | Opcional em `/exchange/v1/history` |
+
+### Exemplos de URL
+
+Transfer:
+
+- `/transfer/v1/history?periodType=range&startDate=2026-07-01&endDate=2026-07-31`
+- `/transfer/v1/history?periodType=monthly&year=2026&month=7&tipo=Despesa&categoriaId=11111111-1111-1111-1111-111111111111`
+- `/transfer/v1/history?periodType=yearly&year=2026&tipo=Receita&categoriaId=11111111-1111-1111-1111-111111111111`
+
+Exchange:
+
+- `/exchange/v1/history?periodType=range&startDate=2026-07-01&endDate=2026-07-31`
+- `/exchange/v1/history?periodType=monthly&year=2026&month=7&lado=Compra`
+- `/exchange/v1/history?periodType=yearly&year=2026&lado=Venda`
+
+### Formato de resposta
+
+Transfer:
+
+```json
+{
+	"transacoes": [
+		{
+			"id": "guid",
+			"carteiraId": "guid",
+			"carteiraDestinoId": null,
+			"tipo": "Receita",
+			"categoriaId": "guid",
+			"categoriaNome": "Salario",
+			"valor": 1000.0,
+			"encargos": 0.0,
+			"valorTotal": 1000.0,
+			"efetivada": true,
+			"dataLancamento": "2026-07-10T00:00:00",
+			"dataVencimento": null,
+			"dataEfetivacao": "2026-07-10T00:00:00",
+			"observacoes": null,
+			"criadaEm": "2026-07-10T12:00:00",
+			"atualizadaEm": null
+		}
+	]
+}
+```
+
+Exchange:
+
+```json
+{
+	"transacoes": [
+		{
+			"id": "guid",
+			"carteiraId": "guid",
+			"codigoAtivo": "PETR4",
+			"lado": "Compra",
+			"quantidade": 10.0,
+			"precoUnitario": 30.5,
+			"valor": 305.0,
+			"encargos": 1.5,
+			"valorTotal": 306.5,
+			"efetivada": true,
+			"dataLancamento": "2026-07-10T00:00:00",
+			"dataVencimento": null,
+			"dataEfetivacao": "2026-07-10T00:00:00",
+			"observacoes": null,
+			"criadaEm": "2026-07-10T12:00:00",
+			"atualizadaEm": null
+		}
+	]
+}
+```
+
+### Regras de validação
+
+- Datas sem hora: `YYYY-MM-DD`.
+- `range`: exige `startDate` e `endDate`.
+- `monthly`: exige `year` e `month`.
+- `yearly`: exige `year`.
+- `startDate` não pode ser maior que `endDate`.
+- `month` fora de `1..12` retorna `400`.
+- `tipo`/`lado` inválidos retornam `400`.
+- `categoriaId` inválido (não GUID) retorna `400`.
+- Regra recomendada no backend: início inclusivo e fim exclusivo (`endDate + 1 dia`).
 
 ---
 
