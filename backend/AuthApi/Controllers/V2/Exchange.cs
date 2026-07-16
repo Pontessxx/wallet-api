@@ -1,9 +1,9 @@
-namespace AuthApi.Controllers;
+namespace AuthApi.Controllers.V2;
 
 [ApiController]
-[Route("exchange/v1")]
+[Route("exchange/v2")]
 [Authorize]
-[ApiExplorerSettings(GroupName = "v1")]
+[ApiExplorerSettings(GroupName = "v2")]
 public class ExchangeController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
@@ -14,43 +14,13 @@ public class ExchangeController : ControllerBase
     }
 
     /// <summary>
-    /// Retorna uma transação de bolsa pelo ID.
+    /// Cria uma nova transação de bolsa para o usuário autenticado.
     /// </summary>
-    /// <param name="id">ID da transação de bolsa</param>
-    /// <param name="ct">Cancellation token</param>
-    /// <returns>Transação de bolsa encontrada</returns>
-    /// <response code="200">Transação encontrada com sucesso</response>
-    /// <response code="401">Usuário autenticado inválido</response>
-    /// <response code="404">Transação de bolsa não encontrada</response>
-    [HttpGet("list")]
-    [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetById([FromQuery] Guid id, CancellationToken ct)
-    {
-        if (!TryGetAuthenticatedUserId(out var userId))
-            return this.UnauthorizedError("Usuário autenticado inválido.");
-
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
-
-        var exchange = await _dbContext.TransacoesBolsa
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
-
-        if (exchange is null)
-            return this.NotFoundError("Transação de bolsa não encontrada.");
-
-        return Ok(MapExchange(exchange));
-    }
-
-    /// <summary>
-    /// Registra uma nova transação de bolsa (compra ou venda de ativo).
-    /// </summary>
-    /// <param name="request">Dados da transação (ativo, lado, quantidade, preço e encargos)</param>
+    /// <param name="request">Dados da transação de bolsa</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Transação de bolsa criada</returns>
     /// <response code="201">Transação de bolsa criada com sucesso</response>
-    /// <response code="400">Dados inválidos para a transação</response>
+    /// <response code="400">Dados inválidos da transação</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpPost("new")]
     [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status201Created)]
@@ -91,14 +61,14 @@ public class ExchangeController : ControllerBase
     }
 
     /// <summary>
-    /// Atualiza uma transação de bolsa existente.
+    /// Atualiza uma transação de bolsa existente do usuário autenticado.
     /// </summary>
     /// <param name="id">ID da transação de bolsa</param>
-    /// <param name="request">Novos dados da transação</param>
+    /// <param name="request">Novos dados da transação de bolsa</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Transação de bolsa atualizada</returns>
     /// <response code="200">Transação de bolsa atualizada com sucesso</response>
-    /// <response code="400">Dados inválidos para a transação</response>
+    /// <response code="400">Dados inválidos da transação</response>
     /// <response code="401">Usuário autenticado inválido</response>
     /// <response code="404">Transação de bolsa não encontrada</response>
     [HttpPut("edit")]
@@ -146,19 +116,59 @@ public class ExchangeController : ControllerBase
     }
 
     /// <summary>
-    /// Retorna o histórico de transações de bolsa do usuário autenticado.
+    /// Retorna uma transação de bolsa específica do usuário autenticado.
     /// </summary>
-    /// <param name="exchangeTypeFilter">Filtro opcional por tipo de transação (Compra ou Venda)</param>
+    /// <param name="id">ID da transação de bolsa</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Lista de transações de bolsa ordenada por data de lançamento</returns>
+    /// <returns>Transação de bolsa encontrada</returns>
+    /// <response code="200">Transação de bolsa encontrada com sucesso</response>
+    /// <response code="401">Usuário autenticado inválido</response>
+    /// <response code="404">Transação de bolsa não encontrada</response>
+    [HttpGet("list")]
+    [ProducesResponseType(typeof(ExchangeTransactionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById([FromQuery] Guid id, CancellationToken ct)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return this.UnauthorizedError("Usuário autenticado inválido.");
+
+        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+
+        var exchange = await _dbContext.TransacoesBolsa
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
+
+        if (exchange is null)
+            return this.NotFoundError("Transação de bolsa não encontrada.");
+
+        return Ok(MapExchange(exchange));
+    }
+
+    /// <summary>
+    /// Retorna o histórico de transações de bolsa do usuário autenticado para um período.
+    /// </summary>
+    /// <param name="periodType">Tipo de período: range, monthly ou yearly</param>
+    /// <param name="startDate">Data inicial (YYYY-MM-DD) quando periodType=range</param>
+    /// <param name="endDate">Data final (YYYY-MM-DD) quando periodType=range</param>
+    /// <param name="year">Ano para filtros monthly/yearly</param>
+    /// <param name="month">Mês (1..12) para filtro monthly</param>
+    /// <param name="exchangeTypeFilter">Filtro opcional pelo lado da operação</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Histórico de transações de bolsa</returns>
     /// <response code="200">Histórico retornado com sucesso</response>
-    /// <response code="400">Parâmetro de filtro inválido</response>
+    /// <response code="400">Parâmetros de período ou filtros inválidos</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpGet("history")]
     [ProducesResponseType(typeof(ExchangeHistoryResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetHistory(
+        [FromQuery] string? periodType,
+        [FromQuery] string? startDate,
+        [FromQuery] string? endDate,
+        [FromQuery] int? year,
+        [FromQuery] int? month,
         [FromQuery(Name = "lado")] TipoTransacaoBolsa? exchangeTypeFilter,
         CancellationToken ct)
     {
@@ -171,11 +181,26 @@ public class ExchangeController : ControllerBase
             return this.BadRequestError($"Parâmetro de query lado inválido. Valores permitidos: {allowedValues}.");
         }
 
+        if (!PeriodQueryParser.TryResolveDateRange(
+                periodType,
+                startDate,
+                endDate,
+                year,
+                month,
+                requirePeriodType: true,
+                out var rangeStart,
+                out var rangeEndExclusive,
+                out var periodError))
+        {
+            return this.BadRequestError(periodError!);
+        }
+
         var walletIds = await GetUserWalletIdsAsync(userId, ct);
 
         var exchangeQuery = _dbContext.TransacoesBolsa
             .AsNoTracking()
-            .Where(t => walletIds.Contains(t.CarteiraId));
+            .Where(t => walletIds.Contains(t.CarteiraId))
+            .Where(t => t.DataLancamento >= rangeStart && t.DataLancamento < rangeEndExclusive);
 
         if (exchangeTypeFilter.HasValue)
             exchangeQuery = exchangeQuery.Where(t => t.Lado == exchangeTypeFilter.Value);
@@ -189,9 +214,9 @@ public class ExchangeController : ControllerBase
     }
 
     /// <summary>
-    /// Remove uma transação de bolsa pelo ID.
+    /// Remove uma transação de bolsa do usuário autenticado.
     /// </summary>
-    /// <param name="id">ID da transação de bolsa a ser removida</param>
+    /// <param name="id">ID da transação de bolsa</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Sem conteúdo</returns>
     /// <response code="204">Transação de bolsa removida com sucesso</response>

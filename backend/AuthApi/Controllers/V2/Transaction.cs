@@ -1,9 +1,9 @@
-namespace AuthApi.Controllers;
+namespace AuthApi.Controllers.V2;
 
 [ApiController]
-[Route("transaction/v1")]
+[Route("transaction/v2")]
 [Authorize]
-[ApiExplorerSettings(GroupName = "v1")]
+[ApiExplorerSettings(GroupName = "v2")]
 public class TransactionController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
@@ -14,13 +14,13 @@ public class TransactionController : ControllerBase
     }
 
     /// <summary>
-    /// Cria uma transferência entre carteiras do usuário autenticado.
+    /// Cria uma nova transferência entre carteiras do usuário autenticado.
     /// </summary>
-    /// <param name="request">Dados da transferência (origem, destino e valores)</param>
+    /// <param name="request">Dados da transferência</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Transferência criada</returns>
     /// <response code="201">Transferência criada com sucesso</response>
-    /// <response code="400">Dados inválidos para transferência</response>
+    /// <response code="400">Dados inválidos da transferência</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpPost("new")]
     [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status201Created)]
@@ -58,14 +58,14 @@ public class TransactionController : ControllerBase
     }
 
     /// <summary>
-    /// Atualiza uma transferência existente.
+    /// Atualiza uma transferência existente do usuário autenticado.
     /// </summary>
     /// <param name="id">ID da transferência</param>
     /// <param name="request">Novos dados da transferência</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Transferência atualizada</returns>
     /// <response code="200">Transferência atualizada com sucesso</response>
-    /// <response code="400">Dados inválidos para transferência</response>
+    /// <response code="400">Dados inválidos da transferência</response>
     /// <response code="401">Usuário autenticado inválido</response>
     /// <response code="404">Transferência não encontrada</response>
     [HttpPut("edit")]

@@ -9,17 +9,11 @@ public static class OpenApiConfigurationExtension
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo
+            c.SwaggerDoc("v2", new OpenApiInfo
             {
                 Title = "Auth API",
                 Version = version,
                 Description = "API da minha aplicação"
-            });
-            c.SwaggerDoc("v2", new OpenApiInfo
-            {
-                Title = "Auth API V2",
-                Version = version,
-                Description = "Autenticação com access token, refresh token e cookie HttpOnly"
             });
             c.UseInlineDefinitionsForEnums();
 
@@ -100,7 +94,6 @@ public static class OpenApiConfigurationExtension
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Backend API V1");
             c.SwaggerEndpoint("/swagger/v2/swagger.json", "Backend API V2");
         });
 
