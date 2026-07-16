@@ -53,7 +53,27 @@ docker compose logs -f postgres
 docker compose logs -f frontend
 ```
 
-### 6) Parar o ambiente
+### 6) Acessar o PostgreSQL e ver tabelas
+
+Com os containers em execução, entre no `psql` do Postgres:
+
+```powershell
+docker compose exec postgres psql -U postgres -d authdb
+```
+
+Se você alterou o arquivo `.env`, use os valores de `POSTGRES_USER` e `POSTGRES_DB` no comando acima.
+
+Dentro do `psql`, use:
+
+```sql
+\dt         -- lista tabelas do schema atual
+\dt *.*     -- lista tabelas de todos os schemas
+\dn         -- lista schemas
+\d users    -- descreve uma tabela (troque pelo nome desejado)
+\q          -- sai do psql
+```
+
+### 7) Parar o ambiente
 
 ```powershell
 docker compose down

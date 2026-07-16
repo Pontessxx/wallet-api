@@ -134,6 +134,74 @@ namespace Infrastructure.Migrations
                     b.ToTable("categories", (string)null);
                 });
 
+            modelBuilder.Entity("Auth.Domain.Objetivo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AporteManualAcumulado")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("manual_contributions_amount");
+
+                    b.Property<DateTime?>("AtualizadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("CarteiraId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("wallet_id");
+
+                    b.Property<DateTime>("CriadaEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("Meses")
+                        .HasColumnType("integer")
+                        .HasColumnName("months");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<decimal>("ValorMensal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("monthly_amount");
+
+                    b.Property<decimal>("ValorTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_amount");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarteiraId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("goals", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_goals_monthly_amount_positive", "monthly_amount > 0");
+
+                            t.HasCheckConstraint("ck_goals_months_positive", "months > 0");
+
+                            t.HasCheckConstraint("ck_goals_total_amount_positive", "total_amount > 0");
+                        });
+                });
+
             modelBuilder.Entity("Auth.Domain.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -561,6 +629,24 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Auth.Domain.Objetivo", b =>
+                {
+                    b.HasOne("Auth.Domain.Carteira", "Carteira")
+                        .WithMany()
+                        .HasForeignKey("CarteiraId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Auth.Domain.User", "User")
+                        .WithMany("Objetivos")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Carteira");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Auth.Domain.RefreshToken", b =>
                 {
                     b.HasOne("Auth.Domain.User", "User")
@@ -637,6 +723,8 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Auth.Domain.User", b =>
                 {
                     b.Navigation("Categories");
+
+                    b.Navigation("Objetivos");
 
                     b.Navigation("RefreshTokens");
                 });

@@ -10,6 +10,7 @@ namespace Infrastructure.Data
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<Carteira> Carteiras => Set<Carteira>();
         public DbSet<Category> Categories => Set<Category>();
+        public DbSet<Objetivo> Objetivos => Set<Objetivo>();
         public DbSet<TransferenciaCarteira> TransferenciasCarteira => Set<TransferenciaCarteira>();
         public DbSet<TransacaoBolsa> TransacoesBolsa => Set<TransacaoBolsa>();
         public DbSet<Transacoes> Transacoes => Set<Transacoes>();
@@ -103,6 +104,41 @@ namespace Infrastructure.Data
                         .HasForeignKey(e => e.UserId)
                         .OnDelete(DeleteBehavior.Cascade);
                     });
+
+            modelBuilder.Entity<Objetivo>(entity =>
+            {
+                entity.ToTable("goals", table =>
+                {
+                    table.HasCheckConstraint("ck_goals_total_amount_positive", "total_amount > 0");
+                    table.HasCheckConstraint("ck_goals_months_positive", "months > 0");
+                    table.HasCheckConstraint("ck_goals_monthly_amount_positive", "monthly_amount > 0");
+                });
+
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.UserId).HasColumnName("user_id");
+                entity.Property(e => e.CarteiraId).HasColumnName("wallet_id");
+                entity.Property(e => e.Nome).HasColumnName("name").IsRequired().HasMaxLength(120);
+                entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);
+                entity.Property(e => e.Meses).HasColumnName("months");
+                entity.Property(e => e.ValorMensal).HasColumnName("monthly_amount").HasPrecision(18, 2);
+                entity.Property(e => e.AporteManualAcumulado).HasColumnName("manual_contributions_amount").HasPrecision(18, 2).HasDefaultValue(0m);
+                entity.Property(e => e.CriadaEm).HasColumnName("created_at").HasDefaultValueSql("now()");
+                entity.Property(e => e.AtualizadaEm).HasColumnName("updated_at");
+
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.CarteiraId);
+
+                entity.HasOne(e => e.User)
+                    .WithMany(e => e.Objetivos)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Carteira)
+                    .WithMany()
+                    .HasForeignKey(e => e.CarteiraId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
 
             modelBuilder.Entity<TransferenciaCarteira>(entity =>
             {

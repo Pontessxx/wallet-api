@@ -24,6 +24,26 @@ Permitir que um usuário:
 | JWT Bearer | Autenticação stateless |
 | xUnit | Testes |
 
+## Acesso rápido ao banco (Docker)
+
+Com o ambiente em execução, para abrir o Postgres no terminal:
+
+```powershell
+docker compose exec postgres psql -U postgres -d authdb
+```
+
+Comandos úteis dentro do `psql`:
+
+```sql
+\dt         -- tabelas do schema atual
+\dt *.*     -- tabelas de todos os schemas
+\dn         -- schemas
+\d users    -- estrutura de uma tabela
+\q          -- sair
+```
+
+Se os valores no `.env` forem diferentes, substitua `postgres` e `authdb` pelos valores de `POSTGRES_USER` e `POSTGRES_DB`.
+
 ## Convenções Importantes
 
 - **Versioning**: mudanças de contrato sempre na versão mais nova (atualmente V2). V1 existe apenas para compatibilidade.
@@ -34,7 +54,7 @@ Permitir que um usuário:
 ## Fluxo de Versioning
 
 ```
-V1 → deprecated (mantido apenas para compatibilidade)
+V1 → deprecated
 V2 → versão ativa, recebe novos endpoints e contratos
 ```
 

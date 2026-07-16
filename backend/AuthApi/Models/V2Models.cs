@@ -45,3 +45,30 @@ public record V2CategoryResult(
 
 public record V2CategoryListResult(
     List<V2CategoryResult> Categorias);
+
+public record V2CreateGoalRequest(
+    string Nome,
+    decimal ValorTotal,
+    int Meses);
+
+public record V2UpdateGoalRequest(
+    string Nome,
+    decimal ValorTotal,
+    int Meses,
+    Guid? CarteiraId,
+    decimal? AporteManual);
+
+public record V2GoalResult(
+    Guid Id,
+    string Nome,
+    decimal ValorTotal,
+    int Meses,
+    decimal ValorMensal,
+    decimal ValorAportado,
+    decimal ValorRestante,
+    decimal PercentualConcluido,
+    bool UsaAporteManual,
+    Guid? CarteiraId);
+
+public record V2GoalListResult(
+    List<V2GoalResult> Objetivos);

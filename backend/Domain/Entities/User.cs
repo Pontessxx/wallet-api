@@ -13,6 +13,7 @@ namespace Auth.Domain
         public DateTime? DeletedAt { get; set; }
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
         public ICollection<Category> Categories { get; set; } = new List<Category>();
+        public ICollection<Objetivo> Objetivos { get; set; } = new List<Objetivo>();
 
         public RoleUser Role { get; set; } = RoleUser.User;
     }

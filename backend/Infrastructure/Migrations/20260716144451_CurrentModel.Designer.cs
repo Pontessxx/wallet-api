@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260710173715_AddTransactionCategory")]
-    partial class AddTransactionCategory
+    [Migration("20260716144451_CurrentModel")]
+    partial class CurrentModel
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -82,6 +82,127 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("wallets", (string)null);
+                });
+
+            modelBuilder.Entity("Auth.Domain.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("ColorHex")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasDefaultValue("#64748B")
+                        .HasColumnName("color_hex");
+
+                    b.Property<DateTime>("CriadaEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("IconKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("tag")
+                        .HasColumnName("icon_key");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "Nome")
+                        .IsUnique();
+
+                    b.ToTable("categories", (string)null);
+                });
+
+            modelBuilder.Entity("Auth.Domain.Objetivo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AporteManualAcumulado")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("manual_contributions_amount");
+
+                    b.Property<DateTime?>("AtualizadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("CarteiraId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("wallet_id");
+
+                    b.Property<DateTime>("CriadaEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("Meses")
+                        .HasColumnType("integer")
+                        .HasColumnName("months");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<decimal>("ValorMensal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("monthly_amount");
+
+                    b.Property<decimal>("ValorTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_amount");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarteiraId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("goals", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_goals_monthly_amount_positive", "monthly_amount > 0");
+
+                            t.HasCheckConstraint("ck_goals_months_positive", "months > 0");
+
+                            t.HasCheckConstraint("ck_goals_total_amount_positive", "total_amount > 0");
+                        });
                 });
 
             modelBuilder.Entity("Auth.Domain.RefreshToken", b =>
@@ -260,10 +381,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("wallet_id");
 
-                    b.Property<string>("Categoria")
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)")
-                        .HasColumnName("category");
+                    b.Property<Guid?>("CategoriaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
 
                     b.Property<DateTime>("CriadaEm")
                         .ValueGeneratedOnAdd()
@@ -320,6 +440,8 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CarteiraId");
+
+                    b.HasIndex("CategoriaId");
 
                     b.HasIndex("DataLancamento");
 
@@ -499,6 +621,35 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Auth.Domain.Category", b =>
+                {
+                    b.HasOne("Auth.Domain.User", "User")
+                        .WithMany("Categories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Auth.Domain.Objetivo", b =>
+                {
+                    b.HasOne("Auth.Domain.Carteira", "Carteira")
+                        .WithMany()
+                        .HasForeignKey("CarteiraId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Auth.Domain.User", "User")
+                        .WithMany("Objetivos")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Carteira");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Auth.Domain.RefreshToken", b =>
                 {
                     b.HasOne("Auth.Domain.User", "User")
@@ -529,7 +680,14 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Auth.Domain.Category", "Categoria")
+                        .WithMany("Transacoes")
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Carteira");
+
+                    b.Navigation("Categoria");
                 });
 
             modelBuilder.Entity("Auth.Domain.TransferenciaCarteira", b =>
@@ -560,8 +718,17 @@ namespace Infrastructure.Migrations
                     b.Navigation("TransferenciasSaida");
                 });
 
+            modelBuilder.Entity("Auth.Domain.Category", b =>
+                {
+                    b.Navigation("Transacoes");
+                });
+
             modelBuilder.Entity("Auth.Domain.User", b =>
                 {
+                    b.Navigation("Categories");
+
+                    b.Navigation("Objetivos");
+
                     b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618

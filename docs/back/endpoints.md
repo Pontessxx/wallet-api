@@ -40,52 +40,96 @@
 
 ---
 
-## Wallet (`/wallet/v1/`)
-
-> Ainda na V1, sem remoção prevista pois não tem contrato quebrado.
+## Goal (`/goal/v2/`)
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/wallet/v1/accounts` | ✅ | Lista carteiras → `{ carteiras: [...] }` |
-| GET | `/wallet/v1/summary` | ✅ | Resumo com `saldoTotal` + carteiras |
-| POST | `/wallet/v1/accounts/create` | ✅ | Cria carteira; tipo via header `X-WalletType` |
-| PUT | `/wallet/v1/accounts/update` | ✅ | Atualiza carteira |
-| DELETE | `/wallet/v1/accounts/delete?id=` | ✅ | Remove carteira |
+| GET | `/goal/v2/list?id=&carteiraId=&periodType=&startDate=&endDate=&year=&month=` | ✅ | Lista objetivos do usuário (filtros opcionais via query, incluindo período) |
+| POST | `/goal/v2/new?carteiraId=` | ✅ | Cria objetivo; `carteiraId` opcional em query |
+| PUT | `/goal/v2/edit?id=` | ✅ | Atualiza objetivo |
+| DELETE | `/goal/v2/remove?id=` | ✅ | Remove objetivo |
+
+### Regras principais de Objetivo
+
+- No create (`POST /goal/v2/new`): `carteiraId` opcional na query; não vai no payload.
+- No payload do create: enviar apenas `nome`, `valorTotal` e `meses`.
+- Se `carteiraId` for enviado, a carteira precisa pertencer ao usuário autenticado.
+- Cálculo de parcela mensal: `valorMensal = valorTotal / meses` (arredondado para 2 casas).
+- Com carteira vinculada: progresso usa saldo atual da carteira (`valorAportado`).
+- Sem carteira vinculada: progresso usa aportes manuais acumulados.
+- Aporte manual é enviado no `PUT /goal/v2/edit` pelo campo opcional `aporteManual` (somente quando o objetivo não tem carteira vinculada).
 
 ---
 
-## Transaction (`/transaction/v1/`)
+## Wallet (`/wallet/v2/`)
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| POST | `/transaction/v1/new` | ✅ | Cria transferência entre carteiras |
-| PUT | `/transaction/v1/edit?id=` | ✅ | Atualiza transferência |
-
-> No estado atual do código, o controller `transaction/v1` está dedicado ao fluxo de transferência entre carteiras.
+| GET | `/wallet/v2/accounts?categoria=` | ✅ | Lista carteiras do usuário com filtro opcional por categoria |
+| GET | `/wallet/v2/summary?categoria=` | ✅ | Resumo das carteiras com filtro opcional por categoria |
 
 ---
 
-## Transfer (`/transfer/v1/`)
+## Transfer (`/transfer/v2/`)
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/transfer/v1/list?id=` | ✅ | Busca transação de receita/despesa por ID |
-| POST | `/transfer/v1/new` | ✅ | Cria lançamento (Receita/Despesa) |
-| PUT | `/transfer/v1/edit?id=` | ✅ | Atualiza lançamento |
-| GET | `/transfer/v1/history` | ✅ | Histórico com filtro opcional `?tipo=` |
-| DELETE | `/transfer/v1/remove?id=` | ✅ | Remove lançamento |
+| GET | `/transfer/v2/list?id=` | ✅ | Busca transação de receita/despesa por ID |
+| GET | `/transfer/v2/history?periodType=&startDate=&endDate=&year=&month=&tipo=&categoriaId=` | ✅ | Histórico com filtros por período + tipo/categoria |
 
 ---
 
-## Exchange (`/exchange/v1/`)
+## Exchange (`/exchange/v2/`)
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/exchange/v1/list?id=` | ✅ | Busca operação de bolsa por ID |
-| POST | `/exchange/v1/new` | ✅ | Cria operação de bolsa |
-| PUT | `/exchange/v1/edit?id=` | ✅ | Atualiza operação de bolsa |
-| GET | `/exchange/v1/history` | ✅ | Histórico com filtro opcional `?lado=` |
-| DELETE | `/exchange/v1/remove?id=` | ✅ | Remove operação de bolsa |
+| GET | `/exchange/v2/list?id=` | ✅ | Busca operação de bolsa por ID |
+| GET | `/exchange/v2/history?periodType=&startDate=&endDate=&year=&month=&lado=` | ✅ | Histórico com filtros por período + lado |
+
+---
+
+## Wallet (`/wallet/v2/`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/wallet/v2/accounts?categoria=` | ✅ | Lista carteiras com filtro opcional por categoria |
+| GET | `/wallet/v2/summary?categoria=` | ✅ | Resumo com filtro opcional por categoria |
+| POST | `/wallet/v2/accounts/create` | ✅ | Cria carteira; tipo via header `X-WalletType` |
+| PUT | `/wallet/v2/accounts/edit` | ✅ | Atualiza carteira |
+| DELETE | `/wallet/v2/accounts/remove` | ✅ | Remove carteira via body `{ id }` |
+
+---
+
+## Transaction (`/transaction/v2/`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| POST | `/transaction/v2/new` | ✅ | Cria transferência entre carteiras |
+| PUT | `/transaction/v2/edit?id=` | ✅ | Atualiza transferência |
+
+---
+
+## Transfer (`/transfer/v2/`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/transfer/v2/list?id=` | ✅ | Busca transação de receita/despesa por ID |
+| POST | `/transfer/v2/new` | ✅ | Cria lançamento (Receita/Despesa) |
+| PUT | `/transfer/v2/edit?id=` | ✅ | Atualiza lançamento |
+| GET | `/transfer/v2/history?periodType=&startDate=&endDate=&year=&month=&tipo=&categoriaId=` | ✅ | Histórico com filtros por período/tipo/categoria |
+| DELETE | `/transfer/v2/remove?id=` | ✅ | Remove lançamento |
+
+---
+
+## Exchange (`/exchange/v2/`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/exchange/v2/list?id=` | ✅ | Busca operação de bolsa por ID |
+| POST | `/exchange/v2/new` | ✅ | Cria operação de bolsa |
+| PUT | `/exchange/v2/edit?id=` | ✅ | Atualiza operação de bolsa |
+| GET | `/exchange/v2/history?periodType=&startDate=&endDate=&year=&month=&lado=` | ✅ | Histórico com filtros por período/lado |
+| DELETE | `/exchange/v2/remove?id=` | ✅ | Remove operação de bolsa |
 
 ---
 
@@ -102,8 +146,8 @@
 
 ### Endpoints de histórico
 
-- Transfer: `/transfer/v1/history`
-- Exchange: `/exchange/v1/history`
+- Transfer: `/transfer/v2/history`
+- Exchange: `/exchange/v2/history`
 
 ### Parâmetros por `periodType`
 
@@ -122,23 +166,23 @@
 | `endDate` | string | `YYYY-MM-DD` | Obrigatório quando `periodType=range` |
 | `year` | number | `YYYY` | Obrigatório quando `periodType=monthly` ou `yearly` |
 | `month` | number | `1..12` | Obrigatório quando `periodType=monthly` |
-| `tipo` | string | `Receita \| Despesa` | Opcional em `/transfer/v1/history` |
-| `categoriaId` | string | `GUID` | Opcional em `/transfer/v1/history` |
-| `lado` | string | `Compra \| Venda` | Opcional em `/exchange/v1/history` |
+| `tipo` | string | `Receita \| Despesa` | Opcional em `/transfer/v2/history` |
+| `categoriaId` | string | `GUID` | Opcional em `/transfer/v2/history` |
+| `lado` | string | `Compra \| Venda` | Opcional em `/exchange/v2/history` |
 
 ### Exemplos de URL
 
 Transfer:
 
-- `/transfer/v1/history?periodType=range&startDate=2026-07-01&endDate=2026-07-31`
-- `/transfer/v1/history?periodType=monthly&year=2026&month=7&tipo=Despesa&categoriaId=11111111-1111-1111-1111-111111111111`
-- `/transfer/v1/history?periodType=yearly&year=2026&tipo=Receita&categoriaId=11111111-1111-1111-1111-111111111111`
+- `/transfer/v2/history?periodType=range&startDate=2026-07-01&endDate=2026-07-31`
+- `/transfer/v2/history?periodType=monthly&year=2026&month=7&tipo=Despesa&categoriaId=11111111-1111-1111-1111-111111111111`
+- `/transfer/v2/history?periodType=yearly&year=2026&tipo=Receita&categoriaId=11111111-1111-1111-1111-111111111111`
 
 Exchange:
 
-- `/exchange/v1/history?periodType=range&startDate=2026-07-01&endDate=2026-07-31`
-- `/exchange/v1/history?periodType=monthly&year=2026&month=7&lado=Compra`
-- `/exchange/v1/history?periodType=yearly&year=2026&lado=Venda`
+- `/exchange/v2/history?periodType=range&startDate=2026-07-01&endDate=2026-07-31`
+- `/exchange/v2/history?periodType=monthly&year=2026&month=7&lado=Compra`
+- `/exchange/v2/history?periodType=yearly&year=2026&lado=Venda`
 
 ### Formato de resposta
 
