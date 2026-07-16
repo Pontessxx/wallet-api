@@ -1,33 +1,34 @@
 namespace AuthApi.Controllers.V2;
 
 [ApiController]
+[Controller]
 [Route("transaction/v2")]
 [Authorize]
 [ApiExplorerSettings(GroupName = "v2")]
-public class TransactionController : ControllerBase
+public class Transaction : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
 
-    public TransactionController(ApplicationDbContext dbContext)
+    public Transaction(ApplicationDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
     /// <summary>
-    /// Cria uma nova transferência entre carteiras do usuário autenticado.
+    /// Cria uma nova transação para uma carteira do usuário autenticado.
     /// </summary>
-    /// <param name="request">Dados da transferência</param>
+    /// <param name="request">Dados da transação</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Transferência criada</returns>
-    /// <response code="201">Transferência criada com sucesso</response>
-    /// <response code="400">Dados inválidos da transferência</response>
+    /// <returns>Transação criada</returns>
+    /// <response code="201">Transação criada com sucesso</response>
+    /// <response code="400">Dados inválidos da transação</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpPost("new")]
     [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CreateTransfer(
-        [FromBody] CreateTransferRequest request,
+    public async Task<IActionResult> CreateEntry(
+        [FromBody] CreateEntryRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
@@ -37,45 +38,38 @@ public class TransactionController : ControllerBase
         if (!walletIds.Contains(request.CarteiraId))
             return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
-        if (request.Valor <= 0)
-            return this.BadRequestError("Valor deve ser maior que zero.");
+        var category = await GetOwnedCategoryAsync(userId, request.CategoriaId, ct);
+        if (category is null)
+            return this.BadRequestError("Categoria informada não pertence ao usuário autenticado.");
 
-        if (request.Encargos < 0)
-            return this.BadRequestError("Encargos não podem ser negativos.");
+        var transacao = request.ToEntity();
+        transacao.Categoria = category;
 
-        if (!walletIds.Contains(request.CarteiraDestinoId))
-            return this.BadRequestError("Carteira de destino não pertence ao usuário autenticado.");
-
-        if (request.CarteiraId == request.CarteiraDestinoId)
-            return this.BadRequestError("Carteira de origem e destino devem ser diferentes.");
-
-        var transferencia = request.ToEntity();
-
-        await _dbContext.TransferenciasCarteira.AddAsync(transferencia, ct);
+        await _dbContext.Transacoes.AddAsync(transacao, ct);
         await _dbContext.SaveChangesAsync(ct);
 
-        return StatusCode(StatusCodes.Status201Created, MapTransfer(transferencia));
+        return StatusCode(StatusCodes.Status201Created, MapTransaction(transacao));
     }
 
     /// <summary>
-    /// Atualiza uma transferência existente do usuário autenticado.
+    /// Atualiza uma transação existente do usuário autenticado.
     /// </summary>
-    /// <param name="id">ID da transferência</param>
-    /// <param name="request">Novos dados da transferência</param>
+    /// <param name="id">ID da transação</param>
+    /// <param name="request">Novos dados da transação</param>
     /// <param name="ct">Cancellation token</param>
-    /// <returns>Transferência atualizada</returns>
-    /// <response code="200">Transferência atualizada com sucesso</response>
-    /// <response code="400">Dados inválidos da transferência</response>
+    /// <returns>Transação atualizada</returns>
+    /// <response code="200">Transação atualizada com sucesso</response>
+    /// <response code="400">Dados inválidos da transação</response>
     /// <response code="401">Usuário autenticado inválido</response>
-    /// <response code="404">Transferência não encontrada</response>
+    /// <response code="404">Transação não encontrada</response>
     [HttpPut("edit")]
     [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateTransfer(
+    public async Task<IActionResult> UpdateEntry(
         [FromQuery] Guid id,
-        [FromBody] UpdateTransferRequest request,
+        [FromBody] UpdateEntryRequest request,
         CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
@@ -85,28 +79,84 @@ public class TransactionController : ControllerBase
         if (!walletIds.Contains(request.CarteiraId))
             return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
-        if (request.Valor <= 0)
-            return this.BadRequestError("Valor deve ser maior que zero.");
+        var category = await GetOwnedCategoryAsync(userId, request.CategoriaId, ct);
+        if (category is null)
+            return this.BadRequestError("Categoria informada não pertence ao usuário autenticado.");
 
-        if (request.Encargos < 0)
-            return this.BadRequestError("Encargos não podem ser negativos.");
+        var transacao = await _dbContext.Transacoes
+            .Include(t => t.Categoria)
+            .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
-        if (!walletIds.Contains(request.CarteiraDestinoId))
-            return this.BadRequestError("Carteira de destino não pertence ao usuário autenticado.");
+        if (transacao is null)
+            return this.NotFoundError("Transação não encontrada.");
 
-        if (request.CarteiraId == request.CarteiraDestinoId)
-            return this.BadRequestError("Carteira de origem e destino devem ser diferentes.");
-
-        var transferencia = await _dbContext.TransferenciasCarteira
-            .FirstOrDefaultAsync(t => t.Id == id && (walletIds.Contains(t.CarteiraOrigemId) || walletIds.Contains(t.CarteiraDestinoId)), ct);
-
-        if (transferencia is null)
-            return this.NotFoundError("Transferência não encontrada.");
-
-        transferencia.ApplyUpdate(request);
+        transacao.ApplyUpdate(request);
+        transacao.Categoria = category;
 
         await _dbContext.SaveChangesAsync(ct);
-        return Ok(MapTransfer(transferencia));
+        return Ok(MapTransaction(transacao));
+    }
+
+    /// <summary>
+    /// Retorna uma transação específica do usuário autenticado.
+    /// </summary>
+    /// <param name="id">ID da transação</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Transação encontrada</returns>
+    /// <response code="200">Transação encontrada com sucesso</response>
+    /// <response code="401">Usuário autenticado inválido</response>
+    /// <response code="404">Transação não encontrada</response>
+    [HttpGet("list")]
+    [ProducesResponseType(typeof(TransactionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById([FromQuery] Guid id, CancellationToken ct)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return this.UnauthorizedError("Usuário autenticado inválido.");
+
+        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+
+        var transacao = await _dbContext.Transacoes
+            .AsNoTracking()
+            .Include(t => t.Categoria)
+            .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
+
+        if (transacao is null)
+            return this.NotFoundError("Transação não encontrada.");
+
+        return Ok(MapTransaction(transacao));
+    }
+
+    /// <summary>
+    /// Remove uma transação do usuário autenticado.
+    /// </summary>
+    /// <param name="id">ID da transação</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Sem conteúdo</returns>
+    /// <response code="204">Transação removida com sucesso</response>
+    /// <response code="401">Usuário autenticado inválido</response>
+    /// <response code="404">Transação não encontrada</response>
+    [HttpDelete("remove")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete([FromQuery] Guid id, CancellationToken ct)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return this.UnauthorizedError("Usuário autenticado inválido.");
+
+        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+
+        var transacao = await _dbContext.Transacoes
+            .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
+
+        if (transacao is null)
+            return this.NotFoundError("Transação não encontrada.");
+
+        _dbContext.Transacoes.Remove(transacao);
+        await _dbContext.SaveChangesAsync(ct);
+        return NoContent();
     }
 
     private bool TryGetAuthenticatedUserId(out Guid userId)
@@ -128,22 +178,26 @@ public class TransactionController : ControllerBase
         return walletIds.ToHashSet();
     }
 
-    private static TransactionResult MapTransfer(TransferenciaCarteira transferencia)
+    private static TransactionResult MapTransaction(Transacoes transacao)
         => new(
-            transferencia.Id,
-            transferencia.CarteiraOrigemId,
-            transferencia.CarteiraDestinoId,
-            TipoTransacoes.Transferencia,
+            transacao.Id,
+            transacao.CarteiraId,
             null,
-            null,
-            transferencia.Valor,
-            transferencia.Encargos,
-            transferencia.ValorTotal,
-            transferencia.Efetivada,
-            transferencia.DataLancamento,
-            transferencia.DataVencimento,
-            transferencia.DataEfetivacao,
-            transferencia.Observacoes,
-            transferencia.CriadaEm,
-            transferencia.AtualizadaEm);
+            transacao.Tipo,
+            transacao.CategoriaId,
+            transacao.Categoria?.Nome,
+            transacao.Valor,
+            transacao.Encargos,
+            transacao.ValorTotal,
+            transacao.Efetivada,
+            transacao.DataLancamento,
+            transacao.DataVencimento,
+            transacao.DataEfetivacao,
+            transacao.Observacoes,
+            transacao.CriadaEm,
+            transacao.AtualizadaEm);
+
+    private Task<Category?> GetOwnedCategoryAsync(Guid userId, Guid categoryId, CancellationToken ct)
+        => _dbContext.Categories
+            .FirstOrDefaultAsync(c => c.Id == categoryId && c.UserId == userId, ct);
 }
