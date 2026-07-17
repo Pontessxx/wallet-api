@@ -39,9 +39,9 @@ public class ExchangeController : ControllerBase
             return this.BadRequestError($"Campo lado é obrigatório. Valores permitidos: {allowedValues}.");
         }
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+        var walletIds = await GetUserInvestmentWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
-            return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
+            return this.BadRequestError("Carteira informada deve ser do tipo Investimento e pertencer ao usuário autenticado.");
 
         if (request.Quantidade <= 0)
             return this.BadRequestError("Quantidade deve ser maior que zero.");
@@ -90,9 +90,9 @@ public class ExchangeController : ControllerBase
             return this.BadRequestError($"Campo lado é obrigatório. Valores permitidos: {allowedValues}.");
         }
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+        var walletIds = await GetUserInvestmentWalletIdsAsync(userId, ct);
         if (!walletIds.Contains(request.CarteiraId))
-            return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
+            return this.BadRequestError("Carteira informada deve ser do tipo Investimento e pertencer ao usuário autenticado.");
 
         if (request.Quantidade <= 0)
             return this.BadRequestError("Quantidade deve ser maior que zero.");
@@ -133,7 +133,7 @@ public class ExchangeController : ControllerBase
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+        var walletIds = await GetUserInvestmentWalletIdsAsync(userId, ct);
 
         var exchange = await _dbContext.TransacoesBolsa
             .AsNoTracking()
@@ -163,7 +163,7 @@ public class ExchangeController : ControllerBase
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+        var walletIds = await GetUserInvestmentWalletIdsAsync(userId, ct);
         var exchange = await _dbContext.TransacoesBolsa
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
 
@@ -183,11 +183,11 @@ public class ExchangeController : ControllerBase
         return Guid.TryParse(userIdValue, out userId);
     }
 
-    private async Task<HashSet<Guid>> GetUserWalletIdsAsync(Guid userId, CancellationToken ct)
+    private async Task<HashSet<Guid>> GetUserInvestmentWalletIdsAsync(Guid userId, CancellationToken ct)
     {
         var walletIds = await _dbContext.Carteiras
             .AsNoTracking()
-            .Where(c => c.UserId == userId)
+            .Where(c => c.UserId == userId && c.Categoria == WalletCategory.Investimento)
             .Select(c => c.Id)
             .ToListAsync(ct);
 

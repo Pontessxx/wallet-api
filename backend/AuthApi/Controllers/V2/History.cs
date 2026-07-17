@@ -161,7 +161,7 @@ public class History : ControllerBase
             return this.BadRequestError(periodError!);
         }
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+        var walletIds = await GetUserInvestmentWalletIdsAsync(userId, ct);
 
         var exchangeQuery = _dbContext.TransacoesBolsa
             .AsNoTracking()
@@ -192,6 +192,17 @@ public class History : ControllerBase
         var walletIds = await _dbContext.Carteiras
             .AsNoTracking()
             .Where(c => c.UserId == userId)
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
+        return walletIds.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>> GetUserInvestmentWalletIdsAsync(Guid userId, CancellationToken ct)
+    {
+        var walletIds = await _dbContext.Carteiras
+            .AsNoTracking()
+            .Where(c => c.UserId == userId && c.Categoria == WalletCategory.Investimento)
             .Select(c => c.Id)
             .ToListAsync(ct);
 

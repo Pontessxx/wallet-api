@@ -66,7 +66,7 @@
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | GET | `/wallet/v2/accounts?categoria=` | ✅ | Lista carteiras do usuário com filtro opcional por categoria |
-| GET | `/wallet/v2/summary?categoria=` | ✅ | Resumo das carteiras com filtro opcional por categoria |
+| GET | `/wallet/v2/summary?categoria=&periodType=&startDate=&endDate=&year=&month=` | ✅ | Resumo das carteiras com filtro opcional por categoria e período |
 
 ---
 
@@ -93,7 +93,7 @@
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | GET | `/wallet/v2/accounts?categoria=` | ✅ | Lista carteiras com filtro opcional por categoria |
-| GET | `/wallet/v2/summary?categoria=` | ✅ | Resumo com filtro opcional por categoria |
+| GET | `/wallet/v2/summary?categoria=&periodType=&startDate=&endDate=&year=&month=` | ✅ | Resumo com filtro opcional por categoria e período |
 | POST | `/wallet/v2/accounts/create` | ✅ | Cria carteira; tipo via header `X-WalletType` |
 | PUT | `/wallet/v2/accounts/edit` | ✅ | Atualiza carteira |
 | DELETE | `/wallet/v2/accounts/remove` | ✅ | Remove carteira via body `{ id }` |
