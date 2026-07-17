@@ -7,10 +7,12 @@ namespace AuthApi.Controllers.V2;
 public class WalletController : ControllerBase
 {
     private readonly ContaCarteiraService _contaCarteiraService;
+    private readonly ApplicationDbContext _dbContext;
 
-    public WalletController(ContaCarteiraService contaCarteiraService)
+    public WalletController(ContaCarteiraService contaCarteiraService, ApplicationDbContext dbContext)
     {
         _contaCarteiraService = contaCarteiraService;
+        _dbContext = dbContext;
     }
 
     /// <summary>
@@ -162,16 +164,28 @@ public class WalletController : ControllerBase
     /// Retorna o resumo de saldos das carteiras do usuário autenticado, com filtro opcional por categoria.
     /// </summary>
     /// <param name="categoria">Categoria opcional para filtrar o resumo</param>
+    /// <param name="periodType">Filtro opcional de período: range, monthly, yearly</param>
+    /// <param name="startDate">Data inicial (YYYY-MM-DD) quando periodType=range</param>
+    /// <param name="endDate">Data final (YYYY-MM-DD) quando periodType=range</param>
+    /// <param name="year">Ano quando periodType=monthly/yearly</param>
+    /// <param name="month">Mês 1..12 quando periodType=monthly</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Resumo de saldos das carteiras</returns>
     /// <response code="200">Resumo retornado com sucesso</response>
-    /// <response code="400">Parâmetro de categoria inválido</response>
+    /// <response code="400">Parâmetro de categoria/período inválido</response>
     /// <response code="401">Usuário autenticado inválido</response>
     [HttpGet("summary")]
     [ProducesResponseType(typeof(WalletSummaryResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetSummary([FromQuery] WalletCategory? categoria, CancellationToken ct)
+    public async Task<IActionResult> GetSummary(
+        [FromQuery] WalletCategory? categoria,
+        [FromQuery] string? periodType,
+        [FromQuery] string? startDate,
+        [FromQuery] string? endDate,
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
@@ -180,6 +194,32 @@ public class WalletController : ControllerBase
         {
             var allowedValues = string.Join(", ", Enum.GetNames<WalletCategory>());
             return this.BadRequestError($"Parâmetro de query categoria inválido. Valores permitidos: {allowedValues}.");
+        }
+
+        var hasPeriodFilter = !string.IsNullOrWhiteSpace(periodType)
+            || !string.IsNullOrWhiteSpace(startDate)
+            || !string.IsNullOrWhiteSpace(endDate)
+            || year.HasValue
+            || month.HasValue;
+
+        if (!PeriodQueryParser.TryResolveDateRange(
+                periodType,
+                startDate,
+                endDate,
+                year,
+                month,
+                requirePeriodType: hasPeriodFilter,
+                out var rangeStart,
+                out var rangeEndExclusive,
+                out var periodError))
+        {
+            return this.BadRequestError(periodError!);
+        }
+
+        if (hasPeriodFilter)
+        {
+            var periodSummary = await BuildPeriodSummaryAsync(userId, categoria, rangeStart, rangeEndExclusive, ct);
+            return Ok(periodSummary);
         }
 
         var summary = await _contaCarteiraService.GetSummaryAsync(userId, ct);
@@ -193,6 +233,95 @@ public class WalletController : ControllerBase
 
         var filteredTotal = filtered.Sum(c => c.Saldo);
         return Ok(new WalletSummaryResult(filtered, filteredTotal));
+    }
+
+    private async Task<WalletSummaryResult> BuildPeriodSummaryAsync(
+        Guid userId,
+        WalletCategory? categoria,
+        DateTime rangeStart,
+        DateTime rangeEndExclusive,
+        CancellationToken ct)
+    {
+        var carteirasQuery = _dbContext.Carteiras
+            .AsNoTracking()
+            .Where(c => c.UserId == userId);
+
+        if (categoria.HasValue)
+            carteirasQuery = carteirasQuery.Where(c => c.Categoria == categoria.Value);
+
+        var carteiras = await carteirasQuery.ToListAsync(ct);
+
+        if (carteiras.Count == 0)
+            return new WalletSummaryResult([], 0m);
+
+        var walletIds = carteiras.Select(c => c.Id).ToList();
+
+        var transacaoTotals = await _dbContext.Transacoes
+            .AsNoTracking()
+            .Where(t => walletIds.Contains(t.CarteiraId))
+            .Where(t => t.DataLancamento >= rangeStart && t.DataLancamento < rangeEndExclusive)
+            .GroupBy(t => t.CarteiraId)
+            .Select(g => new
+            {
+                CarteiraId = g.Key,
+                Receitas = g.Where(x => x.Tipo == TipoTransacoes.Receita).Sum(x => x.ValorTotal),
+                Despesas = g.Where(x => x.Tipo == TipoTransacoes.Despesa).Sum(x => x.ValorTotal),
+            })
+            .ToListAsync(ct);
+
+        var transferInTotals = await _dbContext.TransferenciasCarteira
+            .AsNoTracking()
+            .Where(t => walletIds.Contains(t.CarteiraDestinoId))
+            .Where(t => t.DataLancamento >= rangeStart && t.DataLancamento < rangeEndExclusive)
+            .GroupBy(t => t.CarteiraDestinoId)
+            .Select(g => new
+            {
+                CarteiraId = g.Key,
+                Total = g.Sum(x => x.ValorTotal),
+            })
+            .ToListAsync(ct);
+
+        var transferOutTotals = await _dbContext.TransferenciasCarteira
+            .AsNoTracking()
+            .Where(t => walletIds.Contains(t.CarteiraOrigemId))
+            .Where(t => t.DataLancamento >= rangeStart && t.DataLancamento < rangeEndExclusive)
+            .GroupBy(t => t.CarteiraOrigemId)
+            .Select(g => new
+            {
+                CarteiraId = g.Key,
+                Total = g.Sum(x => x.ValorTotal),
+            })
+            .ToListAsync(ct);
+
+        var transacaoByWallet = transacaoTotals.ToDictionary(x => x.CarteiraId);
+        var transferInByWallet = transferInTotals.ToDictionary(x => x.CarteiraId, x => x.Total);
+        var transferOutByWallet = transferOutTotals.ToDictionary(x => x.CarteiraId, x => x.Total);
+
+        var carteiraResults = carteiras
+            .Select(carteira =>
+            {
+                var receitas = transacaoByWallet.TryGetValue(carteira.Id, out var totals) ? totals.Receitas : 0m;
+                var despesas = transacaoByWallet.TryGetValue(carteira.Id, out totals) ? totals.Despesas : 0m;
+                var transferenciaEntrada = transferInByWallet.TryGetValue(carteira.Id, out var inTotal) ? inTotal : 0m;
+                var transferenciaSaida = transferOutByWallet.TryGetValue(carteira.Id, out var outTotal) ? outTotal : 0m;
+                var transferencias = transferenciaEntrada - transferenciaSaida;
+                var saldo = carteira.SaldoInicial + receitas - despesas + transferencias;
+
+                return new CarteiraResult(
+                    carteira.Id,
+                    carteira.Nome,
+                    carteira.Categoria,
+                    carteira.SaldoInicial,
+                    receitas,
+                    despesas,
+                    transferencias,
+                    saldo,
+                    carteira.SaldoProjetado);
+            })
+            .ToList();
+
+        var saldoTotal = carteiraResults.Sum(c => c.Saldo);
+        return new WalletSummaryResult(carteiraResults, saldoTotal);
     }
 
     private bool TryGetAuthenticatedUserId(out Guid userId)
