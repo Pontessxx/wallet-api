@@ -7,6 +7,7 @@ namespace Auth.Domain
         public string Nome { get; set; } = null!;
         public string IconKey { get; set; } = "tag";
         public string ColorHex { get; set; } = "#64748B";
+        public CategoriaTipo Tipo { get; set; } = CategoriaTipo.Despesa;
         public DateTime CriadaEm { get; set; }
         public DateTime? AtualizadaEm { get; set; }
 

@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICarteiraRepository, CarteiraRepository>();
         services.AddScoped<ITransacaoBolsaRepository, TransacaoBolsaRepository>();

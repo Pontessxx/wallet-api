@@ -8,6 +8,7 @@ public class CategoryController : ControllerBase
 {
     private const string DefaultIconKey = "tag";
     private const string DefaultColorHex = "#64748B";
+    private const CategoriaTipo DefaultTipo = CategoriaTipo.Despesa;
     private static readonly HashSet<string> AllowedIconKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "tag",
@@ -87,6 +88,9 @@ public class CategoryController : ControllerBase
         if (!IsValidHexColor(colorHex))
             return this.BadRequestError("Cor da categoria inválida. Use o formato hexadecimal #RRGGBB.");
 
+        if (!TryParseTipo(request.Tipo, out var tipo))
+            return this.BadRequestError("Tipo de categoria inválido. Use 'Receita' ou 'Despesa'.");
+
         var categoryExists = await _dbContext.Categories
             .AnyAsync(c => c.UserId == userId && c.Nome.ToUpper() == nome.ToUpper(), ct);
 
@@ -100,6 +104,7 @@ public class CategoryController : ControllerBase
             Nome = nome,
             IconKey = iconKey,
             ColorHex = colorHex,
+            Tipo = tipo,
             CriadaEm = DateTime.UtcNow
         };
 
@@ -170,6 +175,17 @@ public class CategoryController : ControllerBase
         return colorHex.Trim().ToUpperInvariant();
     }
 
+    private static bool TryParseTipo(string? tipo, out CategoriaTipo result)
+    {
+        if (string.IsNullOrWhiteSpace(tipo))
+        {
+            result = DefaultTipo;
+            return true;
+        }
+
+        return Enum.TryParse(tipo.Trim(), ignoreCase: true, out result);
+    }
+
     private static bool IsValidHexColor(string colorHex)
     {
         if (colorHex.Length != 7 || colorHex[0] != '#')
@@ -190,6 +206,7 @@ public class CategoryController : ControllerBase
             category.Nome,
             NormalizeIconKey(category.IconKey),
             NormalizeColorHex(category.ColorHex),
+            category.Tipo.ToString(),
             category.CriadaEm,
             category.AtualizadaEm);
 }

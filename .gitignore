@@ -56,3 +56,5 @@ wallet-web
 
 # ─── Obsidian Docs ───────────────────────────────────────────────
 # docs/
+.claude
+CLAUDE.md

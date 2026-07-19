@@ -48,16 +48,39 @@
 | POST | `/goal/v2/new?carteiraId=` | ✅ | Cria objetivo; `carteiraId` opcional em query |
 | PUT | `/goal/v2/edit?id=` | ✅ | Atualiza objetivo |
 | DELETE | `/goal/v2/remove?id=` | ✅ | Remove objetivo |
+| POST | `/goal/v2/aporte/new?id=` | ✅ | Registra um depósito avulso no histórico do objetivo (só sem carteira vinculada) |
+| GET | `/goal/v2/aporte/list?id=` | ✅ | Lista o histórico de depósitos do objetivo |
+| DELETE | `/goal/v2/aporte/remove?id=` | ✅ | Remove um depósito do histórico; `id` é o id do depósito (aporte), não do objetivo |
 
 ### Regras principais de Objetivo
 
 - No create (`POST /goal/v2/new`): `carteiraId` opcional na query; não vai no payload.
-- No payload do create: enviar apenas `nome`, `valorTotal` e `meses`.
+- No payload do create: enviar `nome`, `valorTotal`, `meses` e `iconKey` (opcional; ver lista
+  de ícones permitidos abaixo, default `target`).
 - Se `carteiraId` for enviado, a carteira precisa pertencer ao usuário autenticado.
-- Cálculo de parcela mensal: `valorMensal = valorTotal / meses` (arredondado para 2 casas).
+- Parcela mensal ideal (`valorMensal`) é recalculada a cada leitura (`list`), não persistida
+  como valor fixo: `valorMensal = valorRestante / mesesRestantes` (arredondado para 2 casas).
+  `mesesRestantes` usa o mesmo critério de calendário do frontend (ano/mês da data-alvo
+  `criadaEm + meses` menos ano/mês atual, mínimo 1). Isso faz a parcela cair quando o usuário
+  deposita e subir conforme o tempo passa sem depósito.
 - Com carteira vinculada: progresso usa saldo atual da carteira (`valorAportado`).
-- Sem carteira vinculada: progresso usa aportes manuais acumulados.
-- Aporte manual é enviado no `PUT /goal/v2/edit` pelo campo opcional `aporteManual` (somente quando o objetivo não tem carteira vinculada).
+- Sem carteira vinculada: progresso usa a soma dos depósitos registrados via
+  `POST /goal/v2/aporte/new` (histórico completo, tabela `goal_contributions`).
+- `PUT /goal/v2/edit` ainda aceita o campo opcional `aporteManual` (soma direta, sem
+  registro no histórico) por compatibilidade, mas a via recomendada para novos
+  depósitos é `POST /goal/v2/aporte/new`, que grava valor/data/observação/recorrente
+  e é retornado depois por `GET /goal/v2/aporte/list?id=`.
+- `POST /goal/v2/aporte/new` retorna 400 se o objetivo tiver `carteiraId` (aporte é
+  automático via saldo da carteira nesse caso).
+- `DELETE /goal/v2/aporte/remove?id=` remove o depósito e subtrai o valor de
+  `AporteManualAcumulado` do objetivo (mínimo 0), retornando o objetivo atualizado.
+- Ícones permitidos (`iconKey`): `target`, `plane`, `graduation-cap`, `footprints`,
+  `watch`, `home`, `car`, `gift`, `piggy-bank`, `heart`, `laptop`, `smartphone`,
+  `camera`, `book-open`, `briefcase`, `dumbbell`, `gamepad-2`, `umbrella`, `star`,
+  `wallet`.
+- `V2GoalResult` agora também retorna `iconKey`, `carteiraNome` (nome da carteira
+  vinculada, se houver) e `criadaEm` (usado pelo frontend para calcular a data-alvo
+  como `criadaEm + meses`).
 
 ---
 

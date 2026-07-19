@@ -6,6 +6,7 @@ namespace Auth.Domain
         public Guid UserId { get; set; }
         public Guid? CarteiraId { get; set; }
         public string Nome { get; set; } = null!;
+        public string IconKey { get; set; } = "target";
         public decimal ValorTotal { get; set; }
         public int Meses { get; set; }
         public decimal ValorMensal { get; set; }
@@ -15,5 +16,6 @@ namespace Auth.Domain
 
         public User User { get; set; } = null!;
         public Carteira? Carteira { get; set; }
+        public ICollection<ObjetivoAporte> Aportes { get; set; } = new List<ObjetivoAporte>();
     }
 }

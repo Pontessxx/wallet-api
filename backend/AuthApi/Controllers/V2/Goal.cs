@@ -6,6 +6,31 @@ namespace AuthApi.Controllers.V2;
 [ApiExplorerSettings(GroupName = "v2")]
 public class GoalController : ControllerBase
 {
+    private const string DefaultIconKey = "target";
+    private static readonly HashSet<string> AllowedIconKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "target",
+        "plane",
+        "graduation-cap",
+        "footprints",
+        "watch",
+        "home",
+        "car",
+        "gift",
+        "piggy-bank",
+        "heart",
+        "laptop",
+        "smartphone",
+        "camera",
+        "book-open",
+        "briefcase",
+        "dumbbell",
+        "gamepad-2",
+        "umbrella",
+        "star",
+        "wallet"
+    };
+
     private readonly ApplicationDbContext _dbContext;
 
     public GoalController(ApplicationDbContext dbContext)
@@ -112,7 +137,7 @@ public class GoalController : ControllerBase
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuario autenticado invalido.");
 
-        var validationError = await ValidateGoalRequestAsync(userId, request.Nome, request.ValorTotal, request.Meses, carteiraId, ct);
+        var validationError = await ValidateGoalRequestAsync(userId, request.Nome, request.ValorTotal, request.Meses, carteiraId, request.IconKey, ct);
         if (validationError is not null)
             return this.BadRequestError(validationError);
 
@@ -122,6 +147,7 @@ public class GoalController : ControllerBase
             UserId = userId,
             CarteiraId = carteiraId,
             Nome = request.Nome.Trim(),
+            IconKey = NormalizeIconKey(request.IconKey),
             ValorTotal = request.ValorTotal,
             Meses = request.Meses,
             ValorMensal = ComputeMonthlyAmount(request.ValorTotal, request.Meses),
@@ -159,7 +185,7 @@ public class GoalController : ControllerBase
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuario autenticado invalido.");
 
-        var validationError = await ValidateGoalRequestAsync(userId, request.Nome, request.ValorTotal, request.Meses, request.CarteiraId, ct);
+        var validationError = await ValidateGoalRequestAsync(userId, request.Nome, request.ValorTotal, request.Meses, request.CarteiraId, request.IconKey, ct);
         if (validationError is not null)
             return this.BadRequestError(validationError);
 
@@ -171,6 +197,7 @@ public class GoalController : ControllerBase
             return this.NotFoundError("Objetivo nao encontrado.");
 
         goal.Nome = request.Nome.Trim();
+        goal.IconKey = NormalizeIconKey(request.IconKey);
         goal.ValorTotal = request.ValorTotal;
         goal.Meses = request.Meses;
         goal.CarteiraId = request.CarteiraId;
@@ -219,6 +246,130 @@ public class GoalController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Registra um deposito (aporte) avulso em um objetivo sem carteira vinculada.
+    /// </summary>
+    /// <param name="id">Id do objetivo</param>
+    /// <param name="request">Dados do deposito</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Objetivo atualizado</returns>
+    [HttpPost("aporte/new")]
+    [ProducesResponseType(typeof(V2GoalResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateAporte([FromQuery] Guid id, [FromBody] V2CreateGoalAporteRequest request, CancellationToken ct)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return this.UnauthorizedError("Usuario autenticado invalido.");
+
+        if (request.Valor <= 0)
+            return this.BadRequestError("Valor do deposito deve ser maior que zero.");
+
+        var goal = await _dbContext.Objetivos
+            .FirstOrDefaultAsync(o => o.Id == id && o.UserId == userId, ct);
+
+        if (goal is null)
+            return this.NotFoundError("Objetivo nao encontrado.");
+
+        if (goal.CarteiraId.HasValue)
+            return this.BadRequestError("Objetivo atrelado a carteira usa o saldo da carteira automaticamente.");
+
+        var aporte = new ObjetivoAporte
+        {
+            Id = Guid.NewGuid(),
+            ObjetivoId = goal.Id,
+            Valor = request.Valor,
+            Data = request.Data,
+            Observacao = string.IsNullOrWhiteSpace(request.Observacao) ? null : request.Observacao.Trim(),
+            Recorrente = request.Recorrente,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _dbContext.ObjetivoAportes.AddAsync(aporte, ct);
+
+        goal.AporteManualAcumulado += request.Valor;
+        goal.AtualizadaEm = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        return StatusCode(StatusCodes.Status201Created, MapGoal(goal));
+    }
+
+    /// <summary>
+    /// Lista o historico de depositos (aportes) de um objetivo.
+    /// </summary>
+    /// <param name="id">Id do objetivo</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Lista de depositos do objetivo</returns>
+    [HttpGet("aporte/list")]
+    [ProducesResponseType(typeof(V2GoalAporteListResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListAportes([FromQuery] Guid id, CancellationToken ct)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return this.UnauthorizedError("Usuario autenticado invalido.");
+
+        var goalExists = await _dbContext.Objetivos
+            .AsNoTracking()
+            .AnyAsync(o => o.Id == id && o.UserId == userId, ct);
+
+        if (!goalExists)
+            return this.NotFoundError("Objetivo nao encontrado.");
+
+        var aportes = await _dbContext.ObjetivoAportes
+            .AsNoTracking()
+            .Where(a => a.ObjetivoId == id)
+            .OrderByDescending(a => a.Data)
+            .Select(a => new V2GoalAporteResult(a.Id, a.Valor, a.Data, a.Observacao, a.Recorrente, a.CriadoEm))
+            .ToListAsync(ct);
+
+        return Ok(new V2GoalAporteListResult(aportes));
+    }
+
+    /// <summary>
+    /// Remove um deposito (aporte) do historico de um objetivo do usuario autenticado,
+    /// revertendo o valor do total acumulado do objetivo.
+    /// </summary>
+    /// <param name="id">Id do deposito (aporte)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Objetivo atualizado</returns>
+    [HttpDelete("aporte/remove")]
+    [ProducesResponseType(typeof(V2GoalResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAporte([FromQuery] Guid id, CancellationToken ct)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return this.UnauthorizedError("Usuario autenticado invalido.");
+
+        var aporte = await _dbContext.ObjetivoAportes
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+
+        if (aporte is null)
+            return this.NotFoundError("Deposito nao encontrado.");
+
+        var goal = await _dbContext.Objetivos
+            .Include(o => o.Carteira)
+            .FirstOrDefaultAsync(o => o.Id == aporte.ObjetivoId && o.UserId == userId, ct);
+
+        if (goal is null)
+            return this.NotFoundError("Deposito nao encontrado.");
+
+        _dbContext.ObjetivoAportes.Remove(aporte);
+
+        goal.AporteManualAcumulado -= aporte.Valor;
+        if (goal.AporteManualAcumulado < 0)
+            goal.AporteManualAcumulado = 0m;
+
+        goal.AtualizadaEm = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        return Ok(MapGoal(goal));
+    }
+
     private bool TryGetAuthenticatedUserId(out Guid userId)
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -233,6 +384,7 @@ public class GoalController : ControllerBase
         decimal valorTotal,
         int meses,
         Guid? carteiraId,
+        string? iconKey,
         CancellationToken ct)
     {
         var trimmedName = nome?.Trim();
@@ -251,6 +403,9 @@ public class GoalController : ControllerBase
         if (carteiraId.HasValue && !await WalletBelongsToUserAsync(userId, carteiraId.Value, ct))
             return "Carteira informada nao pertence ao usuario autenticado.";
 
+        if (!string.IsNullOrWhiteSpace(iconKey) && !AllowedIconKeys.Contains(iconKey.Trim()))
+            return "Icone invalido.";
+
         return null;
     }
 
@@ -259,8 +414,31 @@ public class GoalController : ControllerBase
             .AsNoTracking()
             .AnyAsync(c => c.Id == carteiraId && c.UserId == userId, ct);
 
+    private static string NormalizeIconKey(string? iconKey)
+    {
+        if (string.IsNullOrWhiteSpace(iconKey))
+            return DefaultIconKey;
+
+        return iconKey.Trim().ToLowerInvariant();
+    }
+
     private static decimal ComputeMonthlyAmount(decimal totalAmount, int months)
         => decimal.Round(totalAmount / months, 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>
+    /// Meses restantes ate a data-alvo (CriadaEm + Meses), no mesmo criterio de calendario
+    /// usado pelo frontend (date-fns differenceInCalendarMonths: apenas ano/mes, sem dia).
+    /// Nunca retorna menos que 1 para evitar divisao por zero quando a meta vence no mes atual
+    /// ou ja esta atrasada.
+    /// </summary>
+    private static int RemainingMonths(DateTime criadaEm, int meses)
+    {
+        var dataAlvo = criadaEm.AddMonths(meses);
+        var now = DateTime.UtcNow;
+        var calendarMonthsRemaining = ((dataAlvo.Year - now.Year) * 12) + (dataAlvo.Month - now.Month);
+
+        return Math.Max(1, calendarMonthsRemaining);
+    }
 
     private static V2GoalResult MapGoal(Objetivo objetivo)
     {
@@ -283,16 +461,25 @@ public class GoalController : ControllerBase
         if (percentualConcluido > 100m)
             percentualConcluido = 100m;
 
+        // Parcela ideal recalculada a cada leitura: cai conforme aportes reduzem o valor
+        // restante, e sobe conforme o tempo passa sem aporte (menos meses restantes).
+        var valorMensalIdeal = valorRestante > 0
+            ? ComputeMonthlyAmount(valorRestante, RemainingMonths(objetivo.CriadaEm, objetivo.Meses))
+            : 0m;
+
         return new(
             objetivo.Id,
             objetivo.Nome,
+            NormalizeIconKey(objetivo.IconKey),
             objetivo.ValorTotal,
             objetivo.Meses,
-            objetivo.ValorMensal,
+            valorMensalIdeal,
             decimal.Round(valorAportado, 2, MidpointRounding.AwayFromZero),
             decimal.Round(valorRestante, 2, MidpointRounding.AwayFromZero),
             percentualConcluido,
             usaAporteManual,
-            objetivo.CarteiraId);
+            objetivo.CarteiraId,
+            objetivo.Carteira?.Nome,
+            objetivo.CriadaEm);
     }
 }

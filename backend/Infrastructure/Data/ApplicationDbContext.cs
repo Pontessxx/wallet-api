@@ -11,6 +11,7 @@ namespace Infrastructure.Data
         public DbSet<Carteira> Carteiras => Set<Carteira>();
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<Objetivo> Objetivos => Set<Objetivo>();
+        public DbSet<ObjetivoAporte> ObjetivoAportes => Set<ObjetivoAporte>();
         public DbSet<TransferenciaCarteira> TransferenciasCarteira => Set<TransferenciaCarteira>();
         public DbSet<TransacaoBolsa> TransacoesBolsa => Set<TransacaoBolsa>();
         public DbSet<Transacoes> Transacoes => Set<Transacoes>();
@@ -93,6 +94,12 @@ namespace Infrastructure.Data
                     entity.Property(e => e.Nome).HasColumnName("name").IsRequired().HasMaxLength(80);
                     entity.Property(e => e.IconKey).HasColumnName("icon_key").IsRequired().HasMaxLength(40).HasDefaultValue("tag");
                     entity.Property(e => e.ColorHex).HasColumnName("color_hex").IsRequired().HasMaxLength(7).HasDefaultValue("#64748B");
+                    entity.Property(e => e.Tipo)
+                        .HasColumnName("type")
+                        .HasConversion<string>()
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasDefaultValue(CategoriaTipo.Despesa);
                     entity.Property(e => e.CriadaEm).HasColumnName("created_at").HasDefaultValueSql("now()");
                     entity.Property(e => e.AtualizadaEm).HasColumnName("updated_at");
 
@@ -119,6 +126,7 @@ namespace Infrastructure.Data
                 entity.Property(e => e.UserId).HasColumnName("user_id");
                 entity.Property(e => e.CarteiraId).HasColumnName("wallet_id");
                 entity.Property(e => e.Nome).HasColumnName("name").IsRequired().HasMaxLength(120);
+                entity.Property(e => e.IconKey).HasColumnName("icon_key").IsRequired().HasMaxLength(40).HasDefaultValue("target");
                 entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);
                 entity.Property(e => e.Meses).HasColumnName("months");
                 entity.Property(e => e.ValorMensal).HasColumnName("monthly_amount").HasPrecision(18, 2);
@@ -138,6 +146,30 @@ namespace Infrastructure.Data
                     .WithMany()
                     .HasForeignKey(e => e.CarteiraId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<ObjetivoAporte>(entity =>
+            {
+                entity.ToTable("goal_contributions", table =>
+                {
+                    table.HasCheckConstraint("ck_goal_contributions_amount_positive", "amount > 0");
+                });
+
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.ObjetivoId).HasColumnName("goal_id");
+                entity.Property(e => e.Valor).HasColumnName("amount").HasPrecision(18, 2);
+                entity.Property(e => e.Data).HasColumnName("date");
+                entity.Property(e => e.Observacao).HasColumnName("note").HasMaxLength(500);
+                entity.Property(e => e.Recorrente).HasColumnName("is_recurring").HasDefaultValue(false);
+                entity.Property(e => e.CriadoEm).HasColumnName("created_at").HasDefaultValueSql("now()");
+
+                entity.HasIndex(e => e.ObjetivoId);
+
+                entity.HasOne(e => e.Objetivo)
+                    .WithMany(e => e.Aportes)
+                    .HasForeignKey(e => e.ObjetivoId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<TransferenciaCarteira>(entity =>

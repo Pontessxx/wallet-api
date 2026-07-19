@@ -33,13 +33,15 @@ public record V2ChangePasswordResponse(
 public record V2CreateCategoryRequest(
     string Nome,
     string? IconKey,
-    string? ColorHex);
+    string? ColorHex,
+    string? Tipo);
 
 public record V2CategoryResult(
     Guid Id,
     string Nome,
     string IconKey,
     string ColorHex,
+    string Tipo,
     DateTime CriadaEm,
     DateTime? AtualizadaEm);
 
@@ -49,18 +51,21 @@ public record V2CategoryListResult(
 public record V2CreateGoalRequest(
     string Nome,
     decimal ValorTotal,
-    int Meses);
+    int Meses,
+    string? IconKey);
 
 public record V2UpdateGoalRequest(
     string Nome,
     decimal ValorTotal,
     int Meses,
     Guid? CarteiraId,
-    decimal? AporteManual);
+    decimal? AporteManual,
+    string? IconKey);
 
 public record V2GoalResult(
     Guid Id,
     string Nome,
+    string IconKey,
     decimal ValorTotal,
     int Meses,
     decimal ValorMensal,
@@ -68,7 +73,26 @@ public record V2GoalResult(
     decimal ValorRestante,
     decimal PercentualConcluido,
     bool UsaAporteManual,
-    Guid? CarteiraId);
+    Guid? CarteiraId,
+    string? CarteiraNome,
+    DateTime CriadaEm);
 
 public record V2GoalListResult(
     List<V2GoalResult> Objetivos);
+
+public record V2CreateGoalAporteRequest(
+    decimal Valor,
+    DateTime Data,
+    string? Observacao,
+    bool Recorrente);
+
+public record V2GoalAporteResult(
+    Guid Id,
+    decimal Valor,
+    DateTime Data,
+    string? Observacao,
+    bool Recorrente,
+    DateTime CriadoEm);
+
+public record V2GoalAporteListResult(
+    List<V2GoalAporteResult> Aportes);

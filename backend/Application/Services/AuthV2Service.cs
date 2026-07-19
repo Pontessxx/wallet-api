@@ -5,17 +5,20 @@ public class AuthV2Service
     private static readonly TimeSpan AccessTokenLifetime = TimeSpan.FromMinutes(15);
 
     private readonly IUserRepository _userRepository;
+    private readonly ICategoryRepository _categoryRepository;
     private readonly ITokenService _tokenService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IRefreshTokenService _refreshTokenService;
 
     public AuthV2Service(
         IUserRepository userRepository,
+        ICategoryRepository categoryRepository,
         ITokenService tokenService,
         IPasswordHasher passwordHasher,
         IRefreshTokenService refreshTokenService)
     {
         _userRepository = userRepository;
+        _categoryRepository = categoryRepository;
         _tokenService = tokenService;
         _passwordHasher = passwordHasher;
         _refreshTokenService = refreshTokenService;
@@ -60,6 +63,7 @@ public class AuthV2Service
         };
 
         await _userRepository.AddAsync(user, ct);
+        await _categoryRepository.AddDefaultCategoriesAsync(user.Id, ct);
         await _userRepository.SaveChangesAsync(ct);
 
         var accessToken = GenerateAccessToken(user, ticketValidation);
