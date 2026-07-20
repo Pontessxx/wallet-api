@@ -226,7 +226,8 @@ public class History : ControllerBase
             transacao.DataEfetivacao,
             transacao.Observacoes,
             transacao.CriadaEm,
-            transacao.AtualizadaEm);
+            transacao.AtualizadaEm,
+            transacao.ObjetivoId);
 
     private static TransactionResult MapTransfer(TransferenciaCarteira transferencia)
         => new(
@@ -245,7 +246,8 @@ public class History : ControllerBase
             transferencia.DataEfetivacao,
             transferencia.Observacoes,
             transferencia.CriadaEm,
-            transferencia.AtualizadaEm);
+            transferencia.AtualizadaEm,
+            null);
 
     private static ExchangeTransactionResult MapExchange(TransacaoBolsa transacao)
         => new(

@@ -59,7 +59,6 @@ public record V2UpdateGoalRequest(
     decimal ValorTotal,
     int Meses,
     Guid? CarteiraId,
-    decimal? AporteManual,
     string? IconKey);
 
 public record V2GoalResult(
@@ -72,7 +71,6 @@ public record V2GoalResult(
     decimal ValorAportado,
     decimal ValorRestante,
     decimal PercentualConcluido,
-    bool UsaAporteManual,
     Guid? CarteiraId,
     string? CarteiraNome,
     DateTime CriadaEm);
@@ -92,7 +90,8 @@ public record V2GoalAporteResult(
     DateTime Data,
     string? Observacao,
     bool Recorrente,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    Guid? TransacaoId);
 
 public record V2GoalAporteListResult(
     List<V2GoalAporteResult> Aportes);

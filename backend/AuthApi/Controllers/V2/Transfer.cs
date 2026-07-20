@@ -110,6 +110,37 @@ public class Transfer : ControllerBase
         return Ok(MapTransfer(transferencia));
     }
 
+    /// <summary>
+    /// Remove uma transferência do usuário autenticado.
+    /// </summary>
+    /// <param name="id">ID da transferência</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Sem conteúdo</returns>
+    /// <response code="204">Transferência removida com sucesso</response>
+    /// <response code="401">Usuário autenticado inválido</response>
+    /// <response code="404">Transferência não encontrada</response>
+    [HttpDelete("remove")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteTransfer([FromQuery] Guid id, CancellationToken ct)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return this.UnauthorizedError("Usuário autenticado inválido.");
+
+        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+
+        var transferencia = await _dbContext.TransferenciasCarteira
+            .FirstOrDefaultAsync(t => t.Id == id && (walletIds.Contains(t.CarteiraOrigemId) || walletIds.Contains(t.CarteiraDestinoId)), ct);
+
+        if (transferencia is null)
+            return this.NotFoundError("Transferência não encontrada.");
+
+        _dbContext.TransferenciasCarteira.Remove(transferencia);
+        await _dbContext.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     private bool TryGetAuthenticatedUserId(out Guid userId)
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -146,5 +177,6 @@ public class Transfer : ControllerBase
             transferencia.DataEfetivacao,
             transferencia.Observacoes,
             transferencia.CriadaEm,
-            transferencia.AtualizadaEm);
+            transferencia.AtualizadaEm,
+            null);
 }

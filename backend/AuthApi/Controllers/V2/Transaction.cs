@@ -42,10 +42,18 @@ public class Transaction : ControllerBase
         if (category is null)
             return this.BadRequestError("Categoria informada não pertence ao usuário autenticado.");
 
+        var goalError = await ValidateGoalLinkAsync(userId, request.Tipo, request.ObjetivoId, ct);
+        if (goalError is not null)
+            return this.BadRequestError(goalError);
+
         var transacao = request.ToEntity();
         transacao.Categoria = category;
 
         await _dbContext.Transacoes.AddAsync(transacao, ct);
+
+        if (request.ObjetivoId.HasValue && transacao.Efetivada)
+            await _dbContext.ObjetivoAportes.AddAsync(BuildAporteFromTransacao(request.ObjetivoId.Value, transacao), ct);
+
         await _dbContext.SaveChangesAsync(ct);
 
         return StatusCode(StatusCodes.Status201Created, MapTransaction(transacao));
@@ -83,6 +91,10 @@ public class Transaction : ControllerBase
         if (category is null)
             return this.BadRequestError("Categoria informada não pertence ao usuário autenticado.");
 
+        var goalError = await ValidateGoalLinkAsync(userId, request.Tipo, request.ObjetivoId, ct);
+        if (goalError is not null)
+            return this.BadRequestError(goalError);
+
         var transacao = await _dbContext.Transacoes
             .Include(t => t.Categoria)
             .FirstOrDefaultAsync(t => t.Id == id && walletIds.Contains(t.CarteiraId), ct);
@@ -92,6 +104,27 @@ public class Transaction : ControllerBase
 
         transacao.ApplyUpdate(request);
         transacao.Categoria = category;
+
+        var aporte = await _dbContext.ObjetivoAportes.FirstOrDefaultAsync(a => a.TransacaoId == transacao.Id, ct);
+
+        if (request.ObjetivoId.HasValue && transacao.Efetivada)
+        {
+            if (aporte is null)
+            {
+                await _dbContext.ObjetivoAportes.AddAsync(BuildAporteFromTransacao(request.ObjetivoId.Value, transacao), ct);
+            }
+            else
+            {
+                aporte.ObjetivoId = request.ObjetivoId.Value;
+                aporte.Valor = transacao.Valor;
+                aporte.Data = transacao.DataLancamento;
+                aporte.Observacao = transacao.Observacoes;
+            }
+        }
+        else if (aporte is not null)
+        {
+            _dbContext.ObjetivoAportes.Remove(aporte);
+        }
 
         await _dbContext.SaveChangesAsync(ct);
         return Ok(MapTransaction(transacao));
@@ -195,9 +228,38 @@ public class Transaction : ControllerBase
             transacao.DataEfetivacao,
             transacao.Observacoes,
             transacao.CriadaEm,
-            transacao.AtualizadaEm);
+            transacao.AtualizadaEm,
+            transacao.ObjetivoId);
 
     private Task<Category?> GetOwnedCategoryAsync(Guid userId, Guid categoryId, CancellationToken ct)
         => _dbContext.Categories
             .FirstOrDefaultAsync(c => c.Id == categoryId && c.UserId == userId, ct);
+
+    private async Task<string?> ValidateGoalLinkAsync(Guid userId, TipoTransacoes tipo, Guid? objetivoId, CancellationToken ct)
+    {
+        if (!objetivoId.HasValue)
+            return null;
+
+        if (tipo != TipoTransacoes.Receita)
+            return "Somente receitas podem ser vinculadas a um objetivo.";
+
+        var goalExists = await _dbContext.Objetivos
+            .AsNoTracking()
+            .AnyAsync(o => o.Id == objetivoId.Value && o.UserId == userId, ct);
+
+        return goalExists ? null : "Objetivo informado não pertence ao usuário autenticado.";
+    }
+
+    private static ObjetivoAporte BuildAporteFromTransacao(Guid objetivoId, Transacoes transacao)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            ObjetivoId = objetivoId,
+            TransacaoId = transacao.Id,
+            Valor = transacao.Valor,
+            Data = transacao.DataLancamento,
+            Observacao = transacao.Observacoes,
+            Recorrente = false,
+            CriadoEm = DateTime.UtcNow
+        };
 }

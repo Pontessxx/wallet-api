@@ -4,6 +4,7 @@ namespace Auth.Domain
     {
         public Guid Id { get; set; }
         public Guid ObjetivoId { get; set; }
+        public Guid? TransacaoId { get; set; }
         public decimal Valor { get; set; }
         public DateTime Data { get; set; }
         public string? Observacao { get; set; }
@@ -11,5 +12,6 @@ namespace Auth.Domain
         public DateTime CriadoEm { get; set; }
 
         public Objetivo Objetivo { get; set; } = null!;
+        public Transacoes? Transacao { get; set; }
     }
 }

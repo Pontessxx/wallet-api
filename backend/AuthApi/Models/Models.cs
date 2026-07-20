@@ -116,7 +116,8 @@ public abstract record EntryUpsertRequest(
     DateTime DataLancamento,
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
-    string? Observacoes);
+    string? Observacoes,
+    Guid? ObjetivoId);
 
 public record CreateEntryRequest(
     Guid CarteiraId,
@@ -128,7 +129,8 @@ public record CreateEntryRequest(
     DateTime DataLancamento,
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
-    string? Observacoes)
+    string? Observacoes,
+    Guid? ObjetivoId)
     : EntryUpsertRequest(
         CarteiraId,
         Tipo,
@@ -139,7 +141,8 @@ public record CreateEntryRequest(
         DataLancamento,
         DataVencimento,
         DataEfetivacao,
-        Observacoes);
+        Observacoes,
+        ObjetivoId);
 
 public record UpdateEntryRequest(
     Guid CarteiraId,
@@ -151,7 +154,8 @@ public record UpdateEntryRequest(
     DateTime DataLancamento,
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
-    string? Observacoes)
+    string? Observacoes,
+    Guid? ObjetivoId)
     : EntryUpsertRequest(
         CarteiraId,
         Tipo,
@@ -162,7 +166,8 @@ public record UpdateEntryRequest(
         DataLancamento,
         DataVencimento,
         DataEfetivacao,
-        Observacoes);
+        Observacoes,
+        ObjetivoId);
 
 public abstract record TransactionBaseResult(
     Guid Id,
@@ -194,7 +199,8 @@ public record TransactionResult(
     DateTime? DataEfetivacao,
     string? Observacoes,
     DateTime CriadaEm,
-    DateTime? AtualizadaEm)
+    DateTime? AtualizadaEm,
+    Guid? ObjetivoId)
     : TransactionBaseResult(
         Id,
         CarteiraId,

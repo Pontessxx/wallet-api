@@ -130,7 +130,6 @@ namespace Infrastructure.Data
                 entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);
                 entity.Property(e => e.Meses).HasColumnName("months");
                 entity.Property(e => e.ValorMensal).HasColumnName("monthly_amount").HasPrecision(18, 2);
-                entity.Property(e => e.AporteManualAcumulado).HasColumnName("manual_contributions_amount").HasPrecision(18, 2).HasDefaultValue(0m);
                 entity.Property(e => e.CriadaEm).HasColumnName("created_at").HasDefaultValueSql("now()");
                 entity.Property(e => e.AtualizadaEm).HasColumnName("updated_at");
 
@@ -158,6 +157,7 @@ namespace Infrastructure.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasColumnName("id");
                 entity.Property(e => e.ObjetivoId).HasColumnName("goal_id");
+                entity.Property(e => e.TransacaoId).HasColumnName("transaction_id");
                 entity.Property(e => e.Valor).HasColumnName("amount").HasPrecision(18, 2);
                 entity.Property(e => e.Data).HasColumnName("date");
                 entity.Property(e => e.Observacao).HasColumnName("note").HasMaxLength(500);
@@ -165,10 +165,16 @@ namespace Infrastructure.Data
                 entity.Property(e => e.CriadoEm).HasColumnName("created_at").HasDefaultValueSql("now()");
 
                 entity.HasIndex(e => e.ObjetivoId);
+                entity.HasIndex(e => e.TransacaoId).IsUnique();
 
                 entity.HasOne(e => e.Objetivo)
                     .WithMany(e => e.Aportes)
                     .HasForeignKey(e => e.ObjetivoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Transacao)
+                    .WithOne()
+                    .HasForeignKey<ObjetivoAporte>(e => e.TransacaoId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -284,6 +290,8 @@ namespace Infrastructure.Data
                     .HasMaxLength(80);
                 entity.Property(e => e.CategoriaId)
                     .HasColumnName("category_id");
+                entity.Property(e => e.ObjetivoId)
+                    .HasColumnName("goal_id");
                 entity.Property(e => e.Valor).HasColumnName("amount").HasPrecision(18, 2);
                 entity.Property(e => e.Encargos).HasColumnName("charges").HasPrecision(18, 2).HasDefaultValue(0m);
                 entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);
@@ -298,6 +306,7 @@ namespace Infrastructure.Data
                 entity.HasIndex(e => e.CarteiraId);
                 entity.HasIndex(e => e.Tipo);
                 entity.HasIndex(e => e.CategoriaId);
+                entity.HasIndex(e => e.ObjetivoId);
                 entity.HasIndex(e => e.DataLancamento);
                 entity.HasIndex(e => e.DataVencimento);
                 entity.HasIndex(e => e.Efetivada);
@@ -311,6 +320,11 @@ namespace Infrastructure.Data
                     .WithMany(e => e.Transacoes)
                     .HasForeignKey(e => e.CategoriaId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Objetivo)
+                    .WithMany()
+                    .HasForeignKey(e => e.ObjetivoId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

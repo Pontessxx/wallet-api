@@ -108,6 +108,7 @@ public class GoalController : ControllerBase
 
         var objetivoEntities = await query
             .Include(o => o.Carteira)
+            .Include(o => o.Aportes)
             .OrderByDescending(o => o.CriadaEm)
             .ToListAsync(ct);
 
@@ -151,7 +152,6 @@ public class GoalController : ControllerBase
             ValorTotal = request.ValorTotal,
             Meses = request.Meses,
             ValorMensal = ComputeMonthlyAmount(request.ValorTotal, request.Meses),
-            AporteManualAcumulado = 0m,
             CriadaEm = DateTime.UtcNow
         };
 
@@ -191,6 +191,7 @@ public class GoalController : ControllerBase
 
         var goal = await _dbContext.Objetivos
             .Include(o => o.Carteira)
+            .Include(o => o.Aportes)
             .FirstOrDefaultAsync(o => o.Id == id && o.UserId == userId, ct);
 
         if (goal is null)
@@ -202,18 +203,6 @@ public class GoalController : ControllerBase
         goal.Meses = request.Meses;
         goal.CarteiraId = request.CarteiraId;
         goal.ValorMensal = ComputeMonthlyAmount(request.ValorTotal, request.Meses);
-
-        if (request.AporteManual.HasValue)
-        {
-            if (request.AporteManual.Value <= 0)
-                return this.BadRequestError("Valor do aporte manual deve ser maior que zero.");
-
-            if (goal.CarteiraId.HasValue)
-                return this.BadRequestError("Objetivos atrelados a carteira usam saldo da carteira e nao aceitam aporte manual.");
-
-            goal.AporteManualAcumulado += request.AporteManual.Value;
-        }
-
         goal.AtualizadaEm = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(ct);
@@ -247,7 +236,7 @@ public class GoalController : ControllerBase
     }
 
     /// <summary>
-    /// Registra um deposito (aporte) avulso em um objetivo sem carteira vinculada.
+    /// Registra um deposito (aporte) avulso em um objetivo.
     /// </summary>
     /// <param name="id">Id do objetivo</param>
     /// <param name="request">Dados do deposito</param>
@@ -267,13 +256,12 @@ public class GoalController : ControllerBase
             return this.BadRequestError("Valor do deposito deve ser maior que zero.");
 
         var goal = await _dbContext.Objetivos
+            .Include(o => o.Carteira)
+            .Include(o => o.Aportes)
             .FirstOrDefaultAsync(o => o.Id == id && o.UserId == userId, ct);
 
         if (goal is null)
             return this.NotFoundError("Objetivo nao encontrado.");
-
-        if (goal.CarteiraId.HasValue)
-            return this.BadRequestError("Objetivo atrelado a carteira usa o saldo da carteira automaticamente.");
 
         var aporte = new ObjetivoAporte
         {
@@ -287,8 +275,8 @@ public class GoalController : ControllerBase
         };
 
         await _dbContext.ObjetivoAportes.AddAsync(aporte, ct);
+        goal.Aportes.Add(aporte);
 
-        goal.AporteManualAcumulado += request.Valor;
         goal.AtualizadaEm = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(ct);
@@ -322,21 +310,23 @@ public class GoalController : ControllerBase
             .AsNoTracking()
             .Where(a => a.ObjetivoId == id)
             .OrderByDescending(a => a.Data)
-            .Select(a => new V2GoalAporteResult(a.Id, a.Valor, a.Data, a.Observacao, a.Recorrente, a.CriadoEm))
+            .Select(a => new V2GoalAporteResult(a.Id, a.Valor, a.Data, a.Observacao, a.Recorrente, a.CriadoEm, a.TransacaoId))
             .ToListAsync(ct);
 
         return Ok(new V2GoalAporteListResult(aportes));
     }
 
     /// <summary>
-    /// Remove um deposito (aporte) do historico de um objetivo do usuario autenticado,
-    /// revertendo o valor do total acumulado do objetivo.
+    /// Remove um deposito (aporte) manual do historico de um objetivo do usuario autenticado.
+    /// Depositos originados de uma receita vinculada nao podem ser removidos por aqui: e preciso
+    /// editar ou remover a transacao de origem.
     /// </summary>
     /// <param name="id">Id do deposito (aporte)</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Objetivo atualizado</returns>
     [HttpDelete("aporte/remove")]
     [ProducesResponseType(typeof(V2GoalResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseError), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ResponseError), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAporte([FromQuery] Guid id, CancellationToken ct)
@@ -352,16 +342,17 @@ public class GoalController : ControllerBase
 
         var goal = await _dbContext.Objetivos
             .Include(o => o.Carteira)
+            .Include(o => o.Aportes)
             .FirstOrDefaultAsync(o => o.Id == aporte.ObjetivoId && o.UserId == userId, ct);
 
         if (goal is null)
             return this.NotFoundError("Deposito nao encontrado.");
 
-        _dbContext.ObjetivoAportes.Remove(aporte);
+        if (aporte.TransacaoId.HasValue)
+            return this.BadRequestError("Este deposito veio de uma receita. Edite ou remova a transacao de origem.");
 
-        goal.AporteManualAcumulado -= aporte.Valor;
-        if (goal.AporteManualAcumulado < 0)
-            goal.AporteManualAcumulado = 0m;
+        _dbContext.ObjetivoAportes.Remove(aporte);
+        goal.Aportes.Remove(aporte);
 
         goal.AtualizadaEm = DateTime.UtcNow;
 
@@ -442,13 +433,7 @@ public class GoalController : ControllerBase
 
     private static V2GoalResult MapGoal(Objetivo objetivo)
     {
-        var usaAporteManual = !objetivo.CarteiraId.HasValue;
-        var valorAportado = usaAporteManual
-            ? objetivo.AporteManualAcumulado
-            : (objetivo.Carteira?.Saldo ?? 0m);
-
-        if (valorAportado < 0)
-            valorAportado = 0m;
+        var valorAportado = objetivo.Aportes.Sum(a => a.Valor);
 
         var valorRestante = objetivo.ValorTotal - valorAportado;
         if (valorRestante < 0)
@@ -477,7 +462,6 @@ public class GoalController : ControllerBase
             decimal.Round(valorAportado, 2, MidpointRounding.AwayFromZero),
             decimal.Round(valorRestante, 2, MidpointRounding.AwayFromZero),
             percentualConcluido,
-            usaAporteManual,
             objetivo.CarteiraId,
             objetivo.Carteira?.Nome,
             objetivo.CriadaEm);

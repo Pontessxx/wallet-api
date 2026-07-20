@@ -10,7 +10,6 @@ namespace Auth.Domain
         public decimal ValorTotal { get; set; }
         public int Meses { get; set; }
         public decimal ValorMensal { get; set; }
-        public decimal AporteManualAcumulado { get; set; }
         public DateTime CriadaEm { get; set; }
         public DateTime? AtualizadaEm { get; set; }
 
