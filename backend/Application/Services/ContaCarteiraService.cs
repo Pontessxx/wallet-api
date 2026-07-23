@@ -16,7 +16,7 @@ public class ContaCarteiraService
         return new WalletAccountsResult(carteirasResult);
     }
 
-    public async Task<CarteiraResult> CreateAsync(Guid userId, string nome, WalletCategory categoria, decimal saldoInicial, CancellationToken ct = default)
+    public async Task<CarteiraResult> CreateAsync(Guid userId, string nome, WalletCategory categoria, WalletOrigin origem, decimal saldoInicial, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new InvalidOperationException("Nome da carteira é obrigatório.");
@@ -27,6 +27,7 @@ public class ContaCarteiraService
             UserId = userId,
             Nome = nome.Trim(),
             Categoria = categoria,
+            Origem = origem,
             SaldoInicial = saldoInicial,
             Receitas = 0m,
             Despesas = 0m,
@@ -41,7 +42,7 @@ public class ContaCarteiraService
         return carteira.ToResult();
     }
 
-    public async Task<CarteiraResult> UpdateAsync(Guid userId, Guid carteiraId, string nome, WalletCategory categoria, CancellationToken ct = default)
+    public async Task<CarteiraResult> UpdateAsync(Guid userId, Guid carteiraId, string nome, WalletCategory categoria, WalletOrigin origem, CancellationToken ct = default)
     {
         var carteira = await _carteiraRepository.GetByIdAndUserIdAsync(carteiraId, userId, ct)
             ?? throw new InvalidOperationException("Carteira não encontrada.");
@@ -51,6 +52,7 @@ public class ContaCarteiraService
 
         carteira.Nome = nome.Trim();
         carteira.Categoria = categoria;
+        carteira.Origem = origem;
 
         await _carteiraRepository.SaveChangesAsync(ct);
 

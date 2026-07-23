@@ -247,7 +247,9 @@ public class History : ControllerBase
             transferencia.Observacoes,
             transferencia.CriadaEm,
             transferencia.AtualizadaEm,
-            null);
+            null,
+            transferencia.TaxaCambio,
+            transferencia.ValorConvertido);
 
     private static ExchangeTransactionResult MapExchange(TransacaoBolsa transacao)
         => new(

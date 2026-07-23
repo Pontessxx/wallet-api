@@ -44,12 +44,14 @@ public record EditPasswordRequest(
 
 public record CreateCarteiraRequest(
     string Nome,
-    decimal SaldoInicial);
+    decimal SaldoInicial,
+    WalletOrigin Origem);
 
 public record EditCarteiraRequest(
     Guid Id,
     string Nome,
-    WalletCategory Categoria);
+    WalletCategory Categoria,
+    WalletOrigin Origem);
 
 public record RemoveCarteiraRequest(Guid Id);
 
@@ -62,7 +64,8 @@ public abstract record TransferUpsertRequest(
     DateTime DataLancamento,
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
-    string? Observacoes);
+    string? Observacoes,
+    decimal? TaxaCambio);
 
 public record CreateTransferRequest(
     Guid CarteiraId,
@@ -73,7 +76,8 @@ public record CreateTransferRequest(
     DateTime DataLancamento,
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
-    string? Observacoes)
+    string? Observacoes,
+    decimal? TaxaCambio)
     : TransferUpsertRequest(
         CarteiraId,
         CarteiraDestinoId,
@@ -83,7 +87,8 @@ public record CreateTransferRequest(
         DataLancamento,
         DataVencimento,
         DataEfetivacao,
-        Observacoes);
+        Observacoes,
+        TaxaCambio);
 
 public record UpdateTransferRequest(
     Guid CarteiraId,
@@ -94,7 +99,8 @@ public record UpdateTransferRequest(
     DateTime DataLancamento,
     DateTime? DataVencimento,
     DateTime? DataEfetivacao,
-    string? Observacoes)
+    string? Observacoes,
+    decimal? TaxaCambio)
     : TransferUpsertRequest(
         CarteiraId,
         CarteiraDestinoId,
@@ -104,7 +110,8 @@ public record UpdateTransferRequest(
         DataLancamento,
         DataVencimento,
         DataEfetivacao,
-        Observacoes);
+        Observacoes,
+        TaxaCambio);
 
 public abstract record EntryUpsertRequest(
     Guid CarteiraId,
@@ -200,7 +207,9 @@ public record TransactionResult(
     string? Observacoes,
     DateTime CriadaEm,
     DateTime? AtualizadaEm,
-    Guid? ObjetivoId)
+    Guid? ObjetivoId,
+    decimal? TaxaCambio = null,
+    decimal? ValorConvertido = null)
     : TransactionBaseResult(
         Id,
         CarteiraId,

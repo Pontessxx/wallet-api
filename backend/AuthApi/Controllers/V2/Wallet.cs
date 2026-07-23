@@ -49,6 +49,7 @@ public class WalletController : ControllerBase
                 userId,
                 request.Nome,
                 walletType,
+                request.Origem,
                 request.SaldoInicial,
                 ct);
 
@@ -82,7 +83,7 @@ public class WalletController : ControllerBase
 
         try
         {
-            var carteira = await _contaCarteiraService.UpdateAsync(userId, request.Id, request.Nome, request.Categoria, ct);
+            var carteira = await _contaCarteiraService.UpdateAsync(userId, request.Id, request.Nome, request.Categoria, request.Origem, ct);
             return Ok(carteira);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("não encontrada", StringComparison.OrdinalIgnoreCase))
@@ -277,7 +278,7 @@ public class WalletController : ControllerBase
             .Select(g => new
             {
                 CarteiraId = g.Key,
-                Total = g.Sum(x => x.ValorTotal),
+                Total = g.Sum(x => x.ValorConvertido ?? x.ValorTotal),
             })
             .ToListAsync(ct);
 
@@ -311,6 +312,7 @@ public class WalletController : ControllerBase
                     carteira.Id,
                     carteira.Nome,
                     carteira.Categoria,
+                    carteira.Origem,
                     carteira.SaldoInicial,
                     receitas,
                     despesas,

@@ -70,6 +70,10 @@ namespace Infrastructure.Data
                 entity.Property(e => e.Categoria)
                     .HasColumnName("category")
                     .HasConversion<string>();
+                entity.Property(e => e.Origem)
+                    .HasColumnName("origin")
+                    .HasConversion<string>()
+                    .HasDefaultValue(WalletOrigin.Nacional);
                 entity.Property(e => e.SaldoInicial).HasColumnName("initial_balance").HasPrecision(18, 2);
                 entity.Property(e => e.Receitas).HasColumnName("income").HasPrecision(18, 2);
                 entity.Property(e => e.Despesas).HasColumnName("expenses").HasPrecision(18, 2);
@@ -198,6 +202,8 @@ namespace Infrastructure.Data
                 entity.Property(e => e.Valor).HasColumnName("amount").HasPrecision(18, 2);
                 entity.Property(e => e.Encargos).HasColumnName("charges").HasPrecision(18, 2).HasDefaultValue(0m);
                 entity.Property(e => e.ValorTotal).HasColumnName("total_amount").HasPrecision(18, 2);
+                entity.Property(e => e.TaxaCambio).HasColumnName("exchange_rate").HasPrecision(18, 4);
+                entity.Property(e => e.ValorConvertido).HasColumnName("converted_amount").HasPrecision(18, 2);
                 entity.Property(e => e.Efetivada).HasColumnName("is_effective").HasDefaultValue(false);
                 entity.Property(e => e.DataLancamento).HasColumnName("posted_at");
                 entity.Property(e => e.DataVencimento).HasColumnName("due_date");

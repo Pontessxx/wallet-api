@@ -4,6 +4,7 @@ public record CarteiraResult(
     Guid Id,
     string Nome,
     WalletCategory Categoria,
+    WalletOrigin Origem,
     decimal SaldoInicial,
     decimal Receitas,
     decimal Despesas,

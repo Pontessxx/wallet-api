@@ -34,8 +34,8 @@ public class Transfer : ControllerBase
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
-        if (!walletIds.Contains(request.CarteiraId))
+        var wallets = await GetUserWalletOriginsAsync(userId, ct);
+        if (!wallets.ContainsKey(request.CarteiraId))
             return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
         if (request.Valor <= 0)
@@ -44,13 +44,18 @@ public class Transfer : ControllerBase
         if (request.Encargos < 0)
             return this.BadRequestError("Encargos não podem ser negativos.");
 
-        if (!walletIds.Contains(request.CarteiraDestinoId))
+        if (!wallets.ContainsKey(request.CarteiraDestinoId))
             return this.BadRequestError("Carteira de destino não pertence ao usuário autenticado.");
 
         if (request.CarteiraId == request.CarteiraDestinoId)
             return this.BadRequestError("Carteira de origem e destino devem ser diferentes.");
 
+        if (!TryResolveExchange(wallets[request.CarteiraId], wallets[request.CarteiraDestinoId], request.Valor + request.Encargos, request.TaxaCambio, out var taxaCambio, out var valorConvertido, out var exchangeError))
+            return this.BadRequestError(exchangeError!);
+
         var transferencia = request.ToEntity();
+        transferencia.TaxaCambio = taxaCambio;
+        transferencia.ValorConvertido = valorConvertido;
 
         await _dbContext.TransferenciasCarteira.AddAsync(transferencia, ct);
         await _dbContext.SaveChangesAsync(ct);
@@ -82,8 +87,8 @@ public class Transfer : ControllerBase
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
-        if (!walletIds.Contains(request.CarteiraId))
+        var wallets = await GetUserWalletOriginsAsync(userId, ct);
+        if (!wallets.ContainsKey(request.CarteiraId))
             return this.BadRequestError("Carteira informada não pertence ao usuário autenticado.");
 
         if (request.Valor <= 0)
@@ -92,19 +97,24 @@ public class Transfer : ControllerBase
         if (request.Encargos < 0)
             return this.BadRequestError("Encargos não podem ser negativos.");
 
-        if (!walletIds.Contains(request.CarteiraDestinoId))
+        if (!wallets.ContainsKey(request.CarteiraDestinoId))
             return this.BadRequestError("Carteira de destino não pertence ao usuário autenticado.");
 
         if (request.CarteiraId == request.CarteiraDestinoId)
             return this.BadRequestError("Carteira de origem e destino devem ser diferentes.");
 
+        if (!TryResolveExchange(wallets[request.CarteiraId], wallets[request.CarteiraDestinoId], request.Valor + request.Encargos, request.TaxaCambio, out var taxaCambio, out var valorConvertido, out var exchangeError))
+            return this.BadRequestError(exchangeError!);
+
         var transferencia = await _dbContext.TransferenciasCarteira
-            .FirstOrDefaultAsync(t => t.Id == id && (walletIds.Contains(t.CarteiraOrigemId) || walletIds.Contains(t.CarteiraDestinoId)), ct);
+            .FirstOrDefaultAsync(t => t.Id == id && (wallets.ContainsKey(t.CarteiraOrigemId) || wallets.ContainsKey(t.CarteiraDestinoId)), ct);
 
         if (transferencia is null)
             return this.NotFoundError("Transferência não encontrada.");
 
         transferencia.ApplyUpdate(request);
+        transferencia.TaxaCambio = taxaCambio;
+        transferencia.ValorConvertido = valorConvertido;
 
         await _dbContext.SaveChangesAsync(ct);
         return Ok(MapTransfer(transferencia));
@@ -128,10 +138,10 @@ public class Transfer : ControllerBase
         if (!TryGetAuthenticatedUserId(out var userId))
             return this.UnauthorizedError("Usuário autenticado inválido.");
 
-        var walletIds = await GetUserWalletIdsAsync(userId, ct);
+        var wallets = await GetUserWalletOriginsAsync(userId, ct);
 
         var transferencia = await _dbContext.TransferenciasCarteira
-            .FirstOrDefaultAsync(t => t.Id == id && (walletIds.Contains(t.CarteiraOrigemId) || walletIds.Contains(t.CarteiraDestinoId)), ct);
+            .FirstOrDefaultAsync(t => t.Id == id && (wallets.ContainsKey(t.CarteiraOrigemId) || wallets.ContainsKey(t.CarteiraDestinoId)), ct);
 
         if (transferencia is null)
             return this.NotFoundError("Transferência não encontrada.");
@@ -149,15 +159,45 @@ public class Transfer : ControllerBase
         return Guid.TryParse(userIdValue, out userId);
     }
 
-    private async Task<HashSet<Guid>> GetUserWalletIdsAsync(Guid userId, CancellationToken ct)
+    private async Task<Dictionary<Guid, WalletOrigin>> GetUserWalletOriginsAsync(Guid userId, CancellationToken ct)
     {
-        var walletIds = await _dbContext.Carteiras
+        return await _dbContext.Carteiras
             .AsNoTracking()
             .Where(c => c.UserId == userId)
-            .Select(c => c.Id)
-            .ToListAsync(ct);
+            .ToDictionaryAsync(c => c.Id, c => c.Origem, ct);
+    }
 
-        return walletIds.ToHashSet();
+    private static bool TryResolveExchange(
+        WalletOrigin origem,
+        WalletOrigin destino,
+        decimal valorTotal,
+        decimal? taxaCambioInformada,
+        out decimal? taxaCambio,
+        out decimal? valorConvertido,
+        out string? error)
+    {
+        if (origem == destino)
+        {
+            taxaCambio = null;
+            valorConvertido = null;
+            error = null;
+            return true;
+        }
+
+        if (taxaCambioInformada is not > 0)
+        {
+            taxaCambio = null;
+            valorConvertido = null;
+            error = "Informe a cotação para transferência entre moedas diferentes.";
+            return false;
+        }
+
+        taxaCambio = taxaCambioInformada;
+        valorConvertido = origem == WalletOrigin.Nacional
+            ? Math.Round(valorTotal / taxaCambioInformada.Value, 2)
+            : Math.Round(valorTotal * taxaCambioInformada.Value, 2);
+        error = null;
+        return true;
     }
 
     private static TransactionResult MapTransfer(TransferenciaCarteira transferencia)
@@ -178,5 +218,7 @@ public class Transfer : ControllerBase
             transferencia.Observacoes,
             transferencia.CriadaEm,
             transferencia.AtualizadaEm,
-            null);
+            null,
+            transferencia.TaxaCambio,
+            transferencia.ValorConvertido);
 }

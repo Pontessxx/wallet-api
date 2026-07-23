@@ -10,6 +10,7 @@ public static class CarteiraMapper
             carteira.Id,
             carteira.Nome,
             carteira.Categoria,
+            carteira.Origem,
             carteira.SaldoInicial,
             carteira.Receitas,
             carteira.Despesas,

@@ -5,6 +5,7 @@ namespace Auth.Domain
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
         public WalletCategory Categoria { get; set; }
+        public WalletOrigin Origem { get; set; }
         public string Nome { get; set; } = null!;
 
         // saldos agregados
